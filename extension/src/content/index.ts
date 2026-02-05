@@ -131,4 +131,32 @@ const initializePrefetchListeners = () => {
 };
 
 initializePrefetchListeners();
+
+const STRUGGLE_THRESHOLD = 3; // Repetitive clicks on non-interactive area
+let clickCounter = 0;
+let lastClickTime = 0;
+
+document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const isInteractive = target.closest('button, a, input, [role="button"]');
+    
+    const now = Date.now();
+    if (!isInteractive) {
+        if (now - lastClickTime < 2000) { // Clicks within 2 seconds
+            clickCounter++;
+        } else {
+            clickCounter = 1;
+        }
+        
+        if (clickCounter >= STRUGGLE_THRESHOLD) {
+            console.log("User struggle detected (repetitive clicks). Notifying Aura...");
+            chrome.runtime.sendMessage({ type: "STRUGGLE_DETECTED", detail: "repetitive_clicks" });
+            clickCounter = 0; // Reset
+        }
+    } else {
+        clickCounter = 0; // Reset on successful interaction
+    }
+    lastClickTime = now;
+});
+
 console.log("Aura Content Script (Bridge) Initialized and Ready");

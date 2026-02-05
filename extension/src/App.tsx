@@ -18,6 +18,7 @@ function App() {
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [userProfile, setUserProfile] = useState({ cognitive_needs: true, language_level: 'simple' });
+  const [proactivePrompt, setProactivePrompt] = useState(false);
 
   // Load profile on mount
   useEffect(() => {
@@ -46,6 +47,7 @@ function App() {
     setCardData({ summary: '', actions: [] });
     setProcessTime('');
     setShowSettings(false);
+    setProactivePrompt(false);
 
     try {
       if (typeof chrome === 'undefined' || !chrome.tabs) {
@@ -109,8 +111,6 @@ function App() {
         const { value, done } = await reader.read();
         if (done) break;
 
-        // The stream sends data in the format "data: {...}\n\n"
-        // We need to parse this
         const lines = value.split('\n\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -134,41 +134,41 @@ function App() {
       setError(err.message || "An unknown error occurred.");
       setLoading(false);
     }
-  }, [userProfile]); // Re-create if userProfile changes
+  }, [userProfile]);
 
-  // Use a ref to store handleExplain to allow useEffect to access its latest version
   const handleExplainRef = useRef(handleExplain);
   useEffect(() => {
     handleExplainRef.current = handleExplain;
-  }, [handleExplain]); // Update ref whenever handleExplain changes
+  }, [handleExplain]);
 
-  // Start Offscreen Capture for Wake Word on Mount
   useEffect(() => {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
           chrome.runtime.sendMessage({ type: 'start_av_capture' });
       }
   }, []);
 
-  // Listen for wake word trigger from background (via storage)
   useEffect(() => {
     const checkTrigger = () => {
         if (typeof chrome !== 'undefined' && chrome.storage) {
-            chrome.storage.local.get('auraWakeWordTriggered', (result) => {
+            chrome.storage.local.get(['auraWakeWordTriggered', 'auraProactiveHelpTriggered'], (result) => {
                 if (result.auraWakeWordTriggered) {
                     console.log("Wake word trigger detected in storage.");
                     chrome.storage.local.remove('auraWakeWordTriggered');
                     handleExplainRef.current();
                 }
+                if (result.auraProactiveHelpTriggered && !loading && !cardData.summary) {
+                    console.log("Proactive help trigger detected.");
+                    chrome.storage.local.remove('auraProactiveHelpTriggered');
+                    setProactivePrompt(true);
+                }
             });
         }
     };
 
-    // Check on mount
     checkTrigger();
 
-    // Listen for changes
     const handleStorageChange = (changes: any, area: string) => {
-        if (area === 'local' && changes.auraWakeWordTriggered?.newValue) {
+        if (area === 'local' && (changes.auraWakeWordTriggered?.newValue || changes.auraProactiveHelpTriggered?.newValue)) {
             checkTrigger();
         }
     };
@@ -182,7 +182,7 @@ function App() {
             chrome.storage.onChanged.removeListener(handleStorageChange);
         }
     };
-  }, []);
+  }, [loading, cardData.summary]);
 
   const handleTTS = async (text: string) => {
     try {
@@ -217,8 +217,6 @@ function App() {
             if (tab?.id) {
                 chrome.tabs.sendMessage(tab.id, { action: "HIGHLIGHT", selector: result.selector });
             }
-        } else {
-            console.warn("No selector found for action:", action);
         }
     } catch (e) {
         console.error("Action mapping failed:", e);
@@ -226,53 +224,66 @@ function App() {
   };
 
   return (
-    <div className="aura-container" style={{ width: '100%', height: '100vh', padding: '1rem', boxSizing: 'border-box', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>Aura</h1>
+    <main className="aura-container">
+      <header className="aura-header">
+        <h1>Aura</h1>
         <button 
+            className="btn-secondary"
             onClick={() => setShowSettings(!showSettings)}
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+            aria-expanded={showSettings}
+            aria-label="Settings"
         >
             {showSettings ? 'Close' : 'Settings'}
         </button>
-      </div>
+      </header>
 
       {showSettings ? (
-          <div className="settings-panel" style={{ background: '#f9f9f9', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'left' }}>
-              <h3 style={{ marginTop: 0, color: '#333' }}>Accessibility Profile</h3>
+          <section className="settings-panel" aria-labelledby="settings-title">
+              <h3 id="settings-title">Accessibility Profile</h3>
               
-              <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#333' }}>
+              <div className="setting-item">
+                  <label>
                       <input 
                         type="checkbox" 
                         checked={userProfile.cognitive_needs} 
                         onChange={(e) => handleProfileChange('cognitive_needs', e.target.checked)}
-                        style={{ marginRight: '0.5rem' }}
                       />
                       Reduce Cognitive Load
                   </label>
-                  <small style={{ color: '#666', display: 'block', marginLeft: '1.5rem', marginTop: '0.25rem' }}>Simplifies summaries and focuses on essential actions.</small>
+                  <span className="setting-description">Simplifies summaries and focuses on essential actions.</span>
               </div>
 
-              <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', color: '#333' }}>Language Level:</label>
+              <div className="setting-item">
+                  <label htmlFor="lang-level">Language Level:</label>
                   <select 
+                    id="lang-level"
                     value={userProfile.language_level}
                     onChange={(e) => handleProfileChange('language_level', e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
                   >
                       <option value="simple">Simple</option>
                       <option value="detailed">Detailed</option>
                   </select>
               </div>
-          </div>
+          </section>
       ) : (
         <>
-            <button onClick={() => handleExplain()} disabled={loading} style={{width: '100%'}}>
+            {proactivePrompt && (
+                <div className="proactive-banner" style={{ background: '#fff0ff', padding: '1rem', borderRadius: '8px', border: '1px solid var(--aura-primary)', marginBottom: '1rem', textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 0.75rem 0', fontWeight: '600' }}>Struggling? Aura is here to help.</p>
+                    <button className="btn-primary" onClick={() => handleExplain()}>Explain Page</button>
+                    <button className="btn-secondary" style={{ marginTop: '0.5rem', width: '100%' }} onClick={() => setProactivePrompt(false)}>Dismiss</button>
+                </div>
+            )}
+
+            <button 
+                className="btn-primary"
+                onClick={() => handleExplain()} 
+                disabled={loading}
+            >
                 {loading ? 'Thinking...' : 'Explain this Page'}
             </button>
 
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {error && <div className="error-message" role="alert">{error}</div>}
             
             {!loading && cardData.summary && (
                 <div className="explanation-box" style={{ marginTop: '1rem' }}>
@@ -287,7 +298,7 @@ function App() {
             )}
         </>
       )}
-    </div>
+    </main>
   );
 }
 

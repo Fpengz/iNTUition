@@ -110,6 +110,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     });
   }
 
+  if (message.type === 'STRUGGLE_DETECTED') {
+    console.log("User struggle detected. Flagging for proactive help.");
+    chrome.storage.local.set({ auraProactiveHelpTriggered: true });
+  }
+
   return false;
 });
 

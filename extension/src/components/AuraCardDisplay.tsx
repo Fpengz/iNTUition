@@ -11,50 +11,43 @@ interface AuraCardDisplayProps {
 
 const AuraCardDisplay: React.FC<AuraCardDisplayProps> = ({ summary, actions, processTime, onTTSClick, onActionClick }) => {
   return (
-    <div className="aura-card" style={{
+    <article className="aura-card" style={{
         background: '#fff',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        padding: '1rem',
-        marginTop: '1rem',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        padding: '1.25rem',
         textAlign: 'left',
-        color: '#333'
+        color: '#1a1a1a',
+        border: '1px solid #eeeeee'
     }}>
-      <h3 style={{ marginTop: '0', marginBottom: '0.5rem', fontSize: '1.1rem' }}>Aura Summary</h3>
-      <p style={{ marginBottom: '1rem', lineHeight: '1.4' }}>{summary}</p>
+      <h3 style={{ marginTop: '0', marginBottom: '0.75rem', fontSize: '1.2rem', color: '#BD34FE' }}>Aura Summary</h3>
+      <p style={{ marginBottom: '1.25rem', lineHeight: '1.5', fontSize: '1rem' }}>{summary}</p>
       
       {actions && actions.length > 0 && (
-        <>
-          <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '1rem' }}>Suggested Actions:</h4>
+        <nav aria-label="Suggested actions">
+          <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#666' }}>Suggested Actions</h4>
           <ul style={{ listStyleType: 'none', padding: '0', margin: '0' }}>
             {actions.map((action, index) => (
-              <li key={index} style={{ marginBottom: '0.5rem' }}>
+              <li key={index} style={{ marginBottom: '0.6rem' }}>
                 <button
+                  className="btn-secondary"
                   onClick={() => onActionClick(action)}
                   style={{
-                    background: '#e0e0e0',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '0.5rem 0.8rem',
-                    cursor: 'pointer',
                     width: '100%',
                     textAlign: 'left',
-                    color: '#333',
-                    fontSize: '0.9rem',
-                    transition: 'background 0.2s'
+                    padding: '0.6rem 0.8rem',
+                    fontWeight: '500'
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = '#d0d0d0')}
-                  onMouseOut={(e) => (e.currentTarget.style.background = '#e0e0e0')}
                 >
                   {action}
                 </button>
               </li>
             ))}
           </ul>
-        </>
+        </nav>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+      <footer style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f0f0f0' }}>
         {summary && (
           <button
             onClick={() => onTTSClick(summary)}
@@ -64,22 +57,25 @@ const AuraCardDisplay: React.FC<AuraCardDisplayProps> = ({ summary, actions, pro
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              padding: '0'
+              padding: '0.25rem',
+              color: '#BD34FE',
+              fontSize: '0.9rem',
+              fontWeight: '600'
             }}
             title="Listen to summary"
           >
-            <img src="https://img.icons8.com/ios-glyphs/30/000000/speaker.png" alt="Play" style={{ width: '20px', height: '20px', marginRight: '0.5rem' }} />
-            Listen
+            <img src="https://img.icons8.com/ios-glyphs/30/BD34FE/speaker.png" alt="" style={{ width: '20px', height: '20px', marginRight: '0.5rem' }} />
+            Listen to Summary
           </button>
         )}
         
         {processTime && (
-            <span style={{ fontSize: '0.75rem', color: '#888' }}>
+            <span style={{ fontSize: '0.75rem', color: '#999', fontWeight: '500' }}>
                 Latency: {(parseFloat(processTime) * 1000).toFixed(0)}ms
             </span>
         )}
-      </div>
-    </div>
+      </footer>
+    </article>
   );
 };
 

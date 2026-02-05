@@ -1,9 +1,20 @@
 """LLM Provider Abstraction Layer for Aura."""
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator
+from typing import Any
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -49,10 +60,16 @@ class OllamaProvider(BaseProvider):
         self.client = Client(host=host)
         self.model = model
 
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        reraise=True
+    )
     async def generate(
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Ollama's local API."""
+        logger.debug(f"Calling Ollama generate (model: {self.model})")
         options = {
             "temperature": temperature,
             "num_predict": max_tokens,
@@ -72,9 +89,6 @@ class OllamaProvider(BaseProvider):
             "temperature": temperature,
             "num_predict": max_tokens,
         }
-        # Ollama's python client generate method is synchronous for streaming if used as such, 
-        # but let's assume we can use it in a thread or it has an async variant.
-        # For simplicity in this hackathon, we'll wrap it.
         for chunk in self.client.generate(model=self.model, prompt=prompt, options=options, stream=True):
             yield chunk.get("response", "")
             await asyncio.sleep(0)
@@ -90,10 +104,17 @@ class GeminiProvider(BaseProvider):
         self.client = genai.Client(api_key=api_key)
         self.model = model
 
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
     async def generate(
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Google's GenAI SDK."""
+        logger.debug(f"Calling Gemini generate (model: {self.model})")
         response = self.client.models.generate_content(
             model=self.model, contents=prompt
         )
