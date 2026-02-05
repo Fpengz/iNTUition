@@ -33,8 +33,18 @@ This document outlines the strategy for minimizing latency and optimizing resour
 
 ## 🛠️ Planned/Future Optimizations
 
-### 1. Speculative Execution
-- **URL Prefetch:** When the extension detects a link hover or navigation, it can pre-send the URL to the backend for potential cached retrieval or early processing.
+### 1. Speculative Execution (URL Prefetch)
+- **Objective:** To make navigation feel instantaneous by processing the destination page before the user even clicks the link.
+- **Frontend Mechanism:**
+    - The content script will monitor `mouseover` events on `<a>` tags.
+    - A delay (e.g., 750ms) will be used to confirm user intent (i.e., they are hovering, not just moving the mouse across the link).
+    - Upon confirmation, the `href` of the link will be sent to the background script.
+- **Backend Endpoint:**
+    - A new, non-blocking `/prefetch` endpoint will be created.
+    - It will accept a URL and immediately return a `202 Accepted` status.
+- **Background Processing:**
+    - In a background task, the backend will fetch the HTML of the prefetched URL, distill it, generate an explanation, and store the result in the `AuraCache`.
+- **Result:** If the user clicks the link, the subsequent call to `/explain/stream` will result in a near-instant cache hit.
 
 ### 2. Local Distillation
 - Move more of the "Summarization" logic to the extension using local models (e.g., Chrome Built-in AI / Gemini Nano) for simple tasks.

@@ -84,4 +84,33 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+const initializePrefetchListeners = () => {
+  let hoverTimer: number | undefined;
+  const PREFETCH_DELAY = 750; // ms
+
+  document.addEventListener('mouseover', (event) => {
+    const target = event.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (link && link.href) {
+      hoverTimer = window.setTimeout(() => {
+        // Ensure the URL is valid and not a local anchor
+        if (link.href.startsWith('http')) {
+            console.log(`Prefetching: ${link.href}`);
+            chrome.runtime.sendMessage({ type: "PREFETCH_URL", url: link.href });
+        }
+      }, PREFETCH_DELAY);
+    }
+  });
+
+  document.addEventListener('mouseout', (event) => {
+    const target = event.target as HTMLElement;
+    const link = target.closest('a');
+    if (link) {
+      clearTimeout(hoverTimer);
+    }
+  });
+};
+
+initializePrefetchListeners();
 console.log("Aura Bridge Active");

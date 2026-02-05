@@ -1,6 +1,11 @@
 """Module for distilling raw DOM data into a more manageable format."""
 
-from typing import Any
+import logging
+from typing import Any, List
+
+logger = logging.getLogger(__name__)
+
+from app.schemas import DOMData, DistilledData, DistilledElement, DOMElement # Import Pydantic schemas
 
 
 class DOMDistiller:
@@ -10,7 +15,7 @@ class DOMDistiller:
     """
 
     @staticmethod
-    def distill(dom_data: dict[str, Any], max_elements: int = 40) -> dict[str, Any]:
+    def distill(dom_data: DOMData, max_elements: int = 40) -> DistilledData: # Use Pydantic models
         """Distills raw DOM data.
 
         Args:
@@ -18,22 +23,19 @@ class DOMDistiller:
             max_elements: Maximum number of elements to include in each category.
 
         Returns:
-            A dictionary with 'title', 'url', 'summary', and 'actions'.
+            A Dictionary with 'title', 'url', 'summary', and 'actions'.
         """
-        elements = dom_data.get("elements", [])
+        elements: List[DOMElement] = dom_data.elements # Access elements directly
+        logger.info(f"Starting DOM distillation for URL: {dom_data.url} with {len(elements)} raw elements.")
 
-        distilled: dict[str, Any] = {
-            "title": dom_data.get("title", ""),
-            "url": dom_data.get("url", ""),
-            "summary": [],
-            "actions": [],
-        }
+        distilled_summary: List[DistilledElement] = []
+        distilled_actions: List[DistilledElement] = []
 
         seen_texts: set[str] = set()
 
         for el in elements:
-            role = el.get("role", "generic")
-            text = el.get("text", "").strip()
+            role = el.role if el.role else "generic"
+            text = el.text.strip()
 
             # Deduplicate by text to avoid redundant nav links/buttons
             if text and text.lower() in seen_texts:
@@ -45,20 +47,26 @@ class DOMDistiller:
             if not text and role not in ["button", "link", "input"]:
                 continue
 
-            item = {
-                "r": role,  # Shortened keys to save tokens
-                "t": text,
-                "s": el.get("selector"),
-                "l": el.get("aria_label"),
-                "v": el.get("in_viewport", False),  # v for visible/viewport
-            }
+            item = DistilledElement( # Construct DistilledElement
+                role=role,
+                text=text,
+                selector=el.selector,
+                aria_label=el.aria_label,
+                in_viewport=el.in_viewport,
+            )
 
             if role in ["button", "link", "input", "select"]:
-                if len(distilled["actions"]) < max_elements:
-                    distilled["actions"].append(item)
+                if len(distilled_actions) < max_elements:
+                    distilled_actions.append(item)
             else:
-                if len(distilled["summary"]) < max_elements:
-                    distilled["summary"].append(item)
+                if len(distilled_summary) < max_elements:
+                    distilled_summary.append(item)
 
-        return distilled
-
+        logger.info(f"Finished DOM distillation. Summary elements: {len(distilled_summary)}, Action elements: {len(distilled_actions)}")
+        
+        return DistilledData( # Return DistilledData model
+            title=dom_data.title,
+            url=dom_data.url,
+            summary=distilled_summary,
+            actions=distilled_actions,
+        )

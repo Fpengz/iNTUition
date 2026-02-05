@@ -3,7 +3,7 @@
   "name": "Aura: Accessibility Companion",
   "version": "1.0",
   "description": "An AI-powered bridge for interface accessibility.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "microphone"],
   "action": {
     "default_popup": "index.html"
   },

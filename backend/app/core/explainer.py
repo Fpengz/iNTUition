@@ -1,10 +1,13 @@
 """Module for providing natural language explanations using a unified provider interface."""
 
 import json
-from typing import Any, AsyncGenerator
+import logging
+from typing import Any, AsyncGenerator, Optional, List
 
 from app.core.factory import get_provider
+from app.schemas import UserProfile, DistilledData, ExplanationResponse, ActionResponse, DistilledElement # Import Pydantic schemas
 
+logger = logging.getLogger(__name__)
 
 class AuraExplainer:
     """Uses a unified LLM provider to explain web pages and find actions."""
@@ -13,62 +16,102 @@ class AuraExplainer:
         """Initializes the AuraExplainer with the configured provider."""
         self.provider = get_provider()
 
-    def _prepare_explain_prompt(self, distilled_dom: dict[str, Any], user_profile: dict[str, Any] | None) -> str:
+    def _prepare_explain_prompt(self, distilled_data: DistilledData, user_profile: Optional[UserProfile]) -> str:
         """Helper to create a consistent prompt for explanation."""
-        # Prioritize items with 'v': True (visible in viewport)
         summary_items = [
-            f"{'[VISIBLE] ' if item.get('v') else ''}{item['r']}: {item['t']}" 
-            for item in distilled_dom['summary']
+            f"{'[VISIBLE] ' if item.v else ''}{item.r}: {item.t}" # Access via model attributes
+            for item in distilled_data.summary
         ]
         action_items = [
-            f"{'[VISIBLE] ' if item.get('v') else ''}{item['r']}: {item['t']}" 
-            for item in distilled_dom['actions']
+            f"{item.t}" # Access via model attributes
+            for item in distilled_data.actions if item.v # Access via model attributes
         ]
 
-        return f"""
-        You are Aura, an accessibility companion. 
-        Summarize this page in 2 simple sentences for a user with: {user_profile if user_profile else "cognitive needs"}.
-        
-        IMPORTANT: Focus primarily on elements marked as [VISIBLE], as these are currently on the user's screen.
+        prompt = f"""
+        You are Aura, an accessibility companion. Your task is to create a structured JSON output for an Adaptive Card UI.
+        Analyze the provided web page context and generate a JSON object with two keys: "summary" and "actions".
 
-        Title: {distilled_dom['title']}
+        - "summary": A concise, 2-sentence summary for a user with: {user_profile.dict() if user_profile else "cognitive needs"}. Focus on the page's main purpose.
+        - "actions": A list of 2-3 brief, actionable suggestions based on the most important visible elements.
+
+        IMPORTANT: Prioritize elements marked as [VISIBLE].
+
+        Page Title: {distilled_data.title} # Access via model attributes
         Content: {", ".join(summary_items[:20])}
-        Actions: {", ".join(action_items[:15])}
+        Visible Actions: {", ".join(action_items[:10])}
 
-        Rules:
-        1. What is this page?
-        2. What is the main action visible right now?
-        3. Use calming, simple language.
+        Rules for output:
+        1.  Return ONLY a valid JSON object. Do not include markdown or any other text.
+        2.  The "summary" must be a single string.
+        3.  The "actions" must be a JSON array of strings.
+        4.  Use simple, calming language.
+
+        Example JSON output:
+        {{
+            "summary": "This is a login page. You can enter your credentials to access your account.",
+            "actions": ["Enter username", "Enter password", "Click Login"]
+        }}
         """
+        return prompt
 
     async def explain_page(
-        self, distilled_dom: dict[str, Any], user_profile: dict[str, Any] | None = None
-    ) -> str:
-        """Generates a summary of the distilled DOM using the configured provider."""
-        prompt = self._prepare_explain_prompt(distilled_dom, user_profile)
+        self, distilled_data: DistilledData, user_profile: Optional[UserProfile] = None
+    ) -> ExplanationResponse: # Return Pydantic model
+        """Generates a structured summary of the distilled DOM."""
+        logger.info(f"Starting explain_page for URL: {distilled_data.url}")
+        prompt = self._prepare_explain_prompt(distilled_data, user_profile)
+        logger.debug(f"Prompt for explain_page: {prompt}")
         try:
             response = await self.provider.generate(prompt)
-            return response.content if response.content else "Could not generate explanation."
+            content = response.content if response.content else "{}"
+            # Clean potential markdown
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            explanation = ExplanationResponse.parse_raw(content) # Parse directly into model
+            logger.info("explain_page completed successfully.")
+            return explanation
         except Exception as e:
-            return f"Aura Error (Provider): {str(e)}"
+            logger.error(f"Error in explain_page: {e}")
+            # Raise exception or return an error model
+            raise e # Let FastAPI handle HTTPException
+            # return {"error": f"Aura Error (Provider): {str(e)}"}
 
     async def stream_explanation(
-        self, distilled_dom: dict[str, Any], user_profile: dict[str, Any] | None = None
+        self, distilled_data: DistilledData, user_profile: Optional[UserProfile] = None
     ) -> AsyncGenerator[str, None]:
-        """Streams a summary of the distilled DOM."""
-        prompt = self._prepare_explain_prompt(distilled_dom, user_profile)
+        """Streams a structured summary of the distilled DOM as JSON chunks."""
+        logger.info(f"Starting stream_explanation for URL: {distilled_data.url}")
+        prompt = self._prepare_explain_prompt(distilled_data, user_profile)
+        logger.debug(f"Prompt for stream_explanation: {prompt}")
         try:
-            async for chunk in self.provider.generate_stream(prompt):
-                yield chunk
+            # First, get the full response
+            # Note: A true streaming LLM would yield tokens. Here we simulate chunking a full response.
+            response_text = await self.provider.generate(prompt)
+            content = response_text.content if response_text.content else "{}"
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            
+            explanation_data = ExplanationResponse.parse_raw(content) # Parse directly into model
+
+            # Stream the summary
+            if explanation_data.summary:
+                yield json.dumps({"type": "summary", "content": explanation_data.summary})
+
+            # Stream actions one by one
+            if explanation_data.actions:
+                for action in explanation_data.actions:
+                    yield json.dumps({"type": "action", "content": action})
+            logger.info("stream_explanation completed successfully.")
         except Exception as e:
-            yield f"Aura Error (Stream): {str(e)}"
+            logger.error(f"Error in stream_explanation: {e}")
+            yield json.dumps({"type": "error", "content": f"Aura Error (Stream): {str(e)}"})
 
     async def find_action(
-        self, distilled_dom: dict[str, Any], query: str
-    ) -> dict[str, Any]:
+        self, distilled_data: DistilledData, query: str
+    ) -> ActionResponse: # Return Pydantic model
         """Maps a natural language query to a specific DOM element."""
-        # Provide only necessary fields to the LLM
-        compact_actions = [{"t": item['t'], "r": item['r'], "s": item['s']} for item in distilled_dom['actions']]
+        logger.info(f"Starting find_action for URL: {distilled_data.url}, Query: {query}")
+        compact_actions = [{"t": item.t, "r": item.r, "s": item.s} for item in distilled_data.actions] # Access via model attributes
 
         prompt = f"""
         User wants to: "{query}"
@@ -77,17 +120,19 @@ class AuraExplainer:
         Return ONLY a JSON object: {{"selector": "...", "explanation": "..."}}
         Match the user's intent to the best element 't' (text) or 'r' (role).
         """
-
+        logger.debug(f"Prompt for find_action: {prompt}")
         try:
             response = await self.provider.generate(prompt)
-            # The provider might return markdown, we should try to extract JSON
             content = response.content if response.content else ""
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "{" in content:
                 content = content[content.find("{"):content.rfind("}")+1]
             
-            return json.loads(content)
+            action_response = ActionResponse.parse_raw(content) # Parse directly into model
+            logger.info("find_action completed successfully.")
+            return action_response
         except Exception as e:
-            return {"error": f"Aura Error: {str(e)}"}
-
+            logger.error(f"Error in find_action: {e}")
+            raise e # Let FastAPI handle HTTPException
+            # return {"error": f"Aura Error: {str(e)}"}
