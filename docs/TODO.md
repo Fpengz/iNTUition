@@ -1,5 +1,8 @@
 # Aura: Project Roadmap & TODO
 
+> [!TIP]
+> For a detailed long-term strategic plan, see **[ROADMAP.md](./ROADMAP.md)**.
+
 ## ✅ Phase 1: Performance & Core Features (Completed)
 *Goal: Optimize the core explanation engine for speed and efficiency.*
 
@@ -30,12 +33,12 @@
 
 ---
 
-## ⏳ Phase 3: Speculative Execution & Future-Proofing (In Progress)
+## ✅ Phase 3: Speculative Execution & Future-Proofing (Completed)
 *Goal: Proactively reduce latency and document future architectural plans.*
 
-- [ ] **Speculative Execution (Prefetch):**
-    - [ ] Frontend: Detect link hovers to anticipate user navigation.
-    - [ ] Backend: Create a `/prefetch` endpoint to process and cache pages before the user clicks.
+- [x] **Speculative Execution (Prefetch):**
+    - [x] Frontend: Detect link hovers to anticipate user navigation.
+    - [x] Backend: Created `/prefetch` endpoint with HTML distillation and caching.
 - [x] **Architectural Vision:**
     - [x] Created `AGENTIC_ARCHITECTURE.md` outlining the roadmap to a proactive, agentic assistant.
 - [x] **Documentation Update:**

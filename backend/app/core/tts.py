@@ -1,14 +1,14 @@
 """Module for Text-to-Speech synthesis using gTTS."""
 
 import hashlib
+import logging  # Import logging
 from io import BytesIO
-import logging # Import logging
-
-from gtts import gTTS
 
 from app.core.cache import explanation_cache
+from gtts import gTTS
 
-logger = logging.getLogger(__name__) # Get logger
+logger = logging.getLogger(__name__)  # Get logger
+
 
 class AuraTTS:
     """Handles text-to-speech synthesis and caching."""
@@ -27,13 +27,15 @@ class AuraTTS:
         Returns:
             The synthesized speech as MP3 audio bytes.
         """
+        logger.info(f"Synthesizing speech for text (len: {len(text)})")
         cache_key = self._get_cache_key(text)
         cached_audio = explanation_cache.get(cache_key)
 
         if cached_audio and isinstance(cached_audio, bytes):
-            logger.info(f"Using cached TTS for text hash: {cache_key}")
+            logger.info(f"TTS Cache HIT for text hash: {cache_key}")
             return cached_audio
 
+        logger.info(f"TTS Cache MISS for text hash: {cache_key} | Generating audio...")
         # Create an in-memory file-like object
         mp3_fp = BytesIO()
 
@@ -41,15 +43,15 @@ class AuraTTS:
         try:
             tts = gTTS(text=text, lang="en")
             tts.write_to_fp(mp3_fp)
-            logger.info(f"Generated new TTS audio for text hash: {cache_key}")
+            logger.debug(f"gTTS generation successful for {cache_key}")
         except Exception as e:
             # Handle potential gTTS errors (e.g., network issues)
-            logger.error(f"Error during TTS synthesis for text hash {cache_key}: {e}")
+            logger.error(f"Error during TTS synthesis for {cache_key}: {e}", exc_info=True)
             raise e
 
         # Get the bytes from the in-memory file
         audio_bytes = mp3_fp.getvalue()
         explanation_cache.set(cache_key, audio_bytes)
+        logger.info(f"TTS audio generated and cached: {cache_key} | Bytes: {len(audio_bytes)}")
 
         return audio_bytes
-

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura: Permission Setup</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 400px;
+        }
+        h1 { color: #2c3e50; }
+        p { margin-bottom: 2rem; line-height: 1.5; }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        .success { color: #27ae60; display: none; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Aura</h1>
+        <p>To enable voice commands and visual accessibility features, we need your permission to access the microphone and camera.</p>
+        <button id="grant-btn">Grant Permissions</button>
+        <div id="success-msg" class="success">Permissions granted! You can close this tab.</div>
+    </div>
+    <script src="src/setup.ts" type="module"></script>
+</body>
+</html>

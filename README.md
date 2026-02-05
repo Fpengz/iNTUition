@@ -4,9 +4,13 @@ Aura is a real-time interface accessibility bridge designed to reduce cognitive 
 
 ## 🚀 Key Features
 - **Intelligent Explainer:** Real-time page summarization and action mapping using Gemini 2.0 Flash.
-- **DOM Distillation:** Accessibility-focused filtering of web elements for efficient AI processing.
-- **Action Mapping:** Natural language interface for finding and interacting with page elements.
-- **Modular Design:** Built to support personalized accessibility profiles.
+- **Speculative Execution (Prefetching):** Anticipates user navigation by pre-processing and caching pages on hover, resulting in near-instant explanations.
+- **Multimodal Interaction:**
+    - **Voice Wake-up:** Detects "Hey Aura" to activate the assistant hands-free.
+    - **Text-to-Speech (TTS):** Summaries can be read aloud for users with visual or reading impairments.
+- **Low-Latency Streaming:** Uses Server-Sent Events (SSE) to stream AI responses as they are generated, minimizing perceived wait time.
+- **Adaptive Card UI:** Renders structured, easy-to-read explanations using a modern card-based interface.
+- **Semantic DOM Distillation:** Accessibility-focused filtering and token compression of web elements for efficient AI processing.
 
 ## 🧠 Architecture Flow
 ```mermaid

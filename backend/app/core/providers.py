@@ -26,14 +26,14 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content based on a prompt."""
         pass
 
     @abstractmethod
     async def generate_stream(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AsyncGenerator[str, None]:
         """Generates content in a streaming fashion."""
         pass
@@ -50,7 +50,7 @@ class OllamaProvider(BaseProvider):
         self.model = model
 
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Ollama's local API."""
         options = {
@@ -65,7 +65,7 @@ class OllamaProvider(BaseProvider):
         )
 
     async def generate_stream(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AsyncGenerator[str, None]:
         """Streams content using Ollama's local API."""
         options = {
@@ -91,7 +91,7 @@ class GeminiProvider(BaseProvider):
         self.model = model
 
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Google's GenAI SDK."""
         response = self.client.models.generate_content(
@@ -104,7 +104,7 @@ class GeminiProvider(BaseProvider):
         )
 
     async def generate_stream(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AsyncGenerator[str, None]:
         """Streams content using Google's GenAI SDK."""
         response = self.client.models.generate_content_stream(
@@ -130,7 +130,7 @@ class OpenAIProvider(BaseProvider):
         self.model = model
 
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Placeholder for OpenAI generation."""
         return AuraResponse(
@@ -154,7 +154,7 @@ class AnthropicProvider(BaseProvider):
         self.model = model
 
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Placeholder for Anthropic generation."""
         return AuraResponse(

@@ -1,5 +1,5 @@
 [project]
-name = "backend"
+name = "iNTUition-backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -7,33 +7,40 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.128.1",
     "google-genai>=1.62.0",
+    "gtts>=2.5.4",
     "httpx>=0.28.1",
-    "mypy>=1.19.1",
     "ollama>=0.6.1",
     "python-dotenv>=1.2.1",
     "ruff>=0.15.0",
     "uvicorn>=0.40.0",
+    "black>=26.1.0",
+    "ty>=0.0.15",
+    "pydantic>=2.12.5",
+    "pydantic-core>=2.41.5",
+    "beautifulsoup4>=4.14.3",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "respx>=0.22.0",
 ]
 
 [tool.ruff]
-line-length = 88
+line-length = 79
 target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "N",   # pep8-naming
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "D",   # pydocstyle
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "N", # pep8-naming
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "D", # pydocstyle
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
-    "D100",  # Missing docstring in public module
-    "D104",  # Missing docstring in public package
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
 ]
 
 [tool.ruff.lint.pydocstyle]

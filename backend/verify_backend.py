@@ -21,13 +21,17 @@ async def verify() -> None:
             "title": "Example Shop",
             "url": "https://shop.example.com",
             "elements": [
-                {"role": "heading", "text": "Welcome to our Shop"},
+                {"role": "heading", "text": "Welcome to our Shop", "selector": "h1"},
                 {"role": "button", "text": "Add to Cart", "selector": "#add-btn"},
                 {"role": "link", "text": "Checkout", "selector": "#checkout-link"}
             ]
         }
         r = await client.post("/explain", json={"dom_data": mock_dom})
-        print(f"Explain response: {r.json()}")
+        print(f"Explain status: {r.status_code}")
+        if r.status_code == 200:
+            print(f"Explain response: {r.json()}")
+        else:
+            print(f"Explain error body: {r.text}")
 
         # Test action
         print("\nTesting /action...")
@@ -36,6 +40,7 @@ async def verify() -> None:
             "query": "I want to buy these items"
         })
         print(f"Action response: {r.json()}")
+
 
 if __name__ == "__main__":
     asyncio.run(verify())

@@ -67,17 +67,33 @@ chrome.runtime.onMessage.addListener(
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ) => {
+    console.log("Content script received message:", request.action);
+    
     if (request.action === "GET_DOM") {
-      sendResponse(scrapePage());
+      try {
+        const data = scrapePage();
+        console.log("Page scraped successfully, elements found:", data.elements.length);
+        sendResponse(data);
+      } catch (err) {
+        console.error("Scraping failed:", err);
+        sendResponse({ error: "Scraping failed", details: String(err) });
+      }
     } else if (request.action === "HIGHLIGHT" && request.selector) {
-      const el = document.querySelector(request.selector) as HTMLElement;
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.style.outline = "5px solid #BD34FE";
-        el.style.outlineOffset = "5px";
-        setTimeout(() => {
-          el.style.outline = "";
-        }, 3000);
+      try {
+        const el = document.querySelector(request.selector) as HTMLElement;
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.outline = "5px solid #BD34FE";
+          el.style.outlineOffset = "5px";
+          setTimeout(() => {
+            el.style.outline = "";
+          }, 3000);
+          sendResponse({ success: true });
+        } else {
+          sendResponse({ error: "Element not found" });
+        }
+      } catch (err) {
+        sendResponse({ error: "Highlight failed", details: String(err) });
       }
     }
     return true;
@@ -97,7 +113,9 @@ const initializePrefetchListeners = () => {
         // Ensure the URL is valid and not a local anchor
         if (link.href.startsWith('http')) {
             console.log(`Prefetching: ${link.href}`);
-            chrome.runtime.sendMessage({ type: "PREFETCH_URL", url: link.href });
+            chrome.runtime.sendMessage({ type: "PREFETCH_URL", url: link.href }).catch(() => {
+              // Ignore errors if background script is temporarily unavailable
+            });
         }
       }, PREFETCH_DELAY);
     }
@@ -113,4 +131,4 @@ const initializePrefetchListeners = () => {
 };
 
 initializePrefetchListeners();
-console.log("Aura Bridge Active");
+console.log("Aura Content Script (Bridge) Initialized and Ready");
