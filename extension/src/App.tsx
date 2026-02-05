@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import AuraCardDisplay from './components/AuraCardDisplay';
-import { SpeechRecognitionService } from './services/speechRecognition'; // Import SpeechRecognitionService
 
 interface CardData {
   summary: string;
   actions: string[];
 }
 
-const WAKE_WORD = "hey aura"; // Define wake word
+interface UserProfile {
+  cognitive_needs: boolean;
+  language_level: string;
+}
 
 function App() {
   const [cardData, setCardData] = useState<CardData>({ summary: '', actions: [] });
@@ -17,7 +19,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
-  const [userProfile, setUserProfile] = useState({ cognitive_needs: true, language_level: 'simple' });
+  const [userProfile, setUserProfile] = useState<UserProfile>({ cognitive_needs: true, language_level: 'simple' });
   const [proactivePrompt, setProactivePrompt] = useState(false);
 
   // Load profile on mount
@@ -25,14 +27,14 @@ function App() {
     if (typeof chrome !== 'undefined' && chrome.storage) {
         chrome.storage.local.get('auraUserProfile', (result) => {
             if (result.auraUserProfile) {
-                setUserProfile(result.auraUserProfile);
+                setUserProfile(result.auraUserProfile as UserProfile);
             }
         });
     }
   }, []);
 
   // Save profile on change
-  const handleProfileChange = (key: string, value: any) => {
+  const handleProfileChange = (key: keyof UserProfile, value: any) => {
       const newProfile = { ...userProfile, [key]: value };
       setUserProfile(newProfile);
       if (typeof chrome !== 'undefined' && chrome.storage) {
@@ -111,6 +113,8 @@ function App() {
         const { value, done } = await reader.read();
         if (done) break;
 
+        // The stream sends data in the format "data: {...}\n\n"
+        // We need to parse this
         const lines = value.split('\n\n');
         for (const line of lines) {
           if (line.startsWith('data: ')) {

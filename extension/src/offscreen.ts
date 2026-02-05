@@ -1,9 +1,11 @@
 /// <reference lib="dom" />
 
-// Define types for Web Speech API
-interface Window {
-  SpeechRecognition: any;
-  webkitSpeechRecognition: any;
+// Declare global types for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
 }
 
 // Check for browser compatibility
@@ -44,7 +46,9 @@ function startWakeWordListener() {
       console.log("Speech recognition ended in offscreen.");
       isListening = false;
       // Restart if it stopped unexpectedly
-      startWakeWordListener(); 
+      if (isListening) {
+          startWakeWordListener(); 
+      }
     };
 
     recognition.onerror = (event: any) => {
@@ -84,4 +88,3 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
   }
 });
-
