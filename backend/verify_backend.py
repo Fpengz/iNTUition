@@ -26,7 +26,7 @@ async def verify() -> None:
                 {"role": "link", "text": "Checkout", "selector": "#checkout-link"}
             ]
         }
-        r = await client.post("/explain", json=mock_dom)
+        r = await client.post("/explain", json={"dom_data": mock_dom})
         print(f"Explain response: {r.json()}")
 
         # Test action

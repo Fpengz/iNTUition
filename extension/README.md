@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Aura Extension: DOM Access & Extraction
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This document details how Aura interacts with web pages to provide accessibility insights.
 
-Currently, two official plugins are available:
+## Technical Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. API for DOM Access
+Aura utilizes the standard Web **DOM API** within a **Content Script** (`src/content/index.ts`). Content scripts have full access to the page's DOM but operate in an isolated JavaScript environment.
 
-## React Compiler
+### 2. Data Extraction Methods
+Aura scrapes the page using `document.querySelectorAll` to identify interactive and semantic elements.
+- **Target Selectors:** `button, a, input, h1, h2, h3, [role="button"]`.
+- **Attribute Mapping:** 
+    - **Role:** Inferred from `tagName` or `role` attribute.
+    - **Label:** Priority order: `textContent` -> `placeholder` -> `aria-label`.
+    - **Tracking:** Injects a temporary `data-aura-id` attribute into elements for precise mapping and highlighting.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 3. Data Parsing & Distillation
+Raw data is sent to the Backend (`backend/app/core/distiller.py`) for processing:
+- **Filtering:** Removes empty or non-functional elements.
+- **Classification:** Categorizes elements into `Actions` (interactive) and `Summary` (informational) to optimize LLM context.
 
-## Expanding the ESLint configuration
+### 4. Event Listener Implementation
+Communication is handled via `chrome.runtime.onMessage`:
+- **Trigger:** The Popup sends a `GET_DOM` message via `chrome.tabs.sendMessage`.
+- **Response:** The Content Script executes the scrape and returns the serialized JSON payload.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 5. Cross-Origin Restrictions (CORS)
+- **Permissions:** `manifest.json` specifies `host_permissions` for `http://127.0.0.1:8000/*`.
+- **Backend Policy:** FastAPI uses `CORSMiddleware` to allow requests from extension origins.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 6. Error Handling
+- **Injection Check:** Detects if the content script is missing (e.g., on `chrome://` pages or before a refresh).
+- **Communication Safety:** Uses try-catch blocks around `sendMessage` and `fetch` calls to handle network or runtime failures gracefully.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 7. Data Serialization Format (JSON)
+```json
+{
+  "title": "Page Title",
+  "url": "https://example.com",
+  "elements": [
+    {
+      "role": "button",
+      "text": "Login",
+      "selector": "[data-aura-id='aura-el-5']",
+      "aria_label": "Log into your account"
+    }
+  ]
+}
 ```

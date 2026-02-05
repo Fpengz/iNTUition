@@ -26,21 +26,27 @@ export const scrapePage = () => {
 };
 
 // Listen for messages from the Popup/Sidecar
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === "GET_DOM") {
-    sendResponse(scrapePage());
-  } else if (request.action === "HIGHLIGHT") {
-    const el = document.querySelector(request.selector) as HTMLElement;
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.style.outline = '5px solid #BD34FE';
-      el.style.outlineOffset = '5px';
-      setTimeout(() => {
-        el.style.outline = '';
-      }, 3000);
+chrome.runtime.onMessage.addListener(
+  (
+    request: { action: string; selector?: string },
+    _sender: chrome.runtime.MessageSender,
+    sendResponse: (response: any) => void
+  ) => {
+    if (request.action === "GET_DOM") {
+      sendResponse(scrapePage());
+    } else if (request.action === "HIGHLIGHT" && request.selector) {
+      const el = document.querySelector(request.selector) as HTMLElement;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.outline = "5px solid #BD34FE";
+        el.style.outlineOffset = "5px";
+        setTimeout(() => {
+          el.style.outline = "";
+        }, 3000);
+      }
     }
+    return true;
   }
-  return true;
-});
+);
 
 console.log("Aura Bridge Active");

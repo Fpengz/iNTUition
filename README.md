@@ -7,6 +7,14 @@ Aura is a real-time interface accessibility bridge designed to reduce cognitive 
 - **DOM Distillation:** Accessibility-focused filtering of web elements for efficient AI processing.
 - **Modular Design:** Built to support personalized accessibility profiles and cognitive load monitoring.
 
+## 🧠 Architecture Flow
+```mermaid
+graph LR
+    A[Website DOM] --> B[Extension (Filters/Distills)]
+    B --> C[Backend API]
+    C --> D[Gemini LLM]
+```
+
 ## 🛠️ Project Structure
 - `backend/`: FastAPI engine providing AI reasoning and DOM distillation.
 - `extension/`: (Development) Browser extension wrapper to inject Aura into any website.
