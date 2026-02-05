@@ -155,6 +155,45 @@ async def prefetch(
     return {"message": "URL accepted for prefetching."}
 
 
+from app.agent.core.agent import AuraAgent
+from app.agent.tools.distiller_tool import DistillerTool
+from app.agent.tools.explainer_tool import ExplainerTool
+from app.agent.tools.tts_tool import TTSTool
+
+# Initialize Agent with tools
+agent = AuraAgent([
+    DistillerTool(),
+    ExplainerTool(),
+    TTSTool()
+])
+
+
+@app.post("/chat")
+async def chat(
+        request: Request,
+) -> dict[str, str]:
+    """Chat endpoint for interacting with the agentic Aura."""
+    try:
+        body = await request.json()
+        query = body.get("query")
+        if not query:
+            return Response(
+                content=json.dumps({"error": "Missing query"}),
+                status_code=422,
+                media_type="application/json",
+            )
+
+        response = await agent.execute(query)
+        return {"response": response}
+    except Exception as e:
+        logger.exception(f"Error in /chat: {e}")
+        return Response(
+            content=json.dumps({"error": str(e)}),
+            status_code=500,
+            media_type="application/json",
+        )
+
+
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint for the API.
