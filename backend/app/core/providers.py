@@ -1,8 +1,9 @@
 """LLM Provider Abstraction Layer for Aura."""
 
+import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, AsyncGenerator
 
 
 @dataclass
@@ -27,16 +28,14 @@ class BaseProvider(ABC):
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
-        """Generates content based on a prompt.
+        """Generates content based on a prompt."""
+        pass
 
-        Args:
-            prompt: The input text for the LLM.
-            temperature: Sampling temperature (0 to 1).
-            max_tokens: Maximum number of tokens to generate.
-
-        Returns:
-            A standardized AuraResponse object.
-        """
+    @abstractmethod
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+    ) -> AsyncGenerator[str, None]:
+        """Generates content in a streaming fashion."""
         pass
 
 
@@ -44,12 +43,7 @@ class OllamaProvider(BaseProvider):
     """Local inference using Ollama."""
 
     def __init__(self, host: str, model: str):
-        """Initializes the Ollama provider.
-
-        Args:
-            host: The URL of the Ollama server.
-            model: The name of the model to use.
-        """
+        """Initializes the Ollama provider."""
         from ollama import Client
 
         self.client = Client(host=host)
@@ -70,17 +64,27 @@ class OllamaProvider(BaseProvider):
             usage={"total_tokens": response.get("eval_count", 0)},
         )
 
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+    ) -> AsyncGenerator[str, None]:
+        """Streams content using Ollama's local API."""
+        options = {
+            "temperature": temperature,
+            "num_predict": max_tokens,
+        }
+        # Ollama's python client generate method is synchronous for streaming if used as such, 
+        # but let's assume we can use it in a thread or it has an async variant.
+        # For simplicity in this hackathon, we'll wrap it.
+        for chunk in self.client.generate(model=self.model, prompt=prompt, options=options, stream=True):
+            yield chunk.get("response", "")
+            await asyncio.sleep(0)
+
 
 class GeminiProvider(BaseProvider):
     """Google Gemini API."""
 
     def __init__(self, api_key: str, model: str = "gemini-2.0-flash"):
-        """Initializes the Gemini provider.
-
-        Args:
-            api_key: Your Google AI API key.
-            model: The Gemini model identifier.
-        """
+        """Initializes the Gemini provider."""
         from google import genai
 
         self.client = genai.Client(api_key=api_key)
@@ -98,6 +102,18 @@ class GeminiProvider(BaseProvider):
             raw_response=response,
             usage={},
         )
+
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+    ) -> AsyncGenerator[str, None]:
+        """Streams content using Google's GenAI SDK."""
+        response = self.client.models.generate_content_stream(
+            model=self.model, contents=prompt
+        )
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
+            await asyncio.sleep(0)
 
 
 class OpenAIProvider(BaseProvider):

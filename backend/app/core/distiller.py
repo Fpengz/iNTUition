@@ -10,13 +10,12 @@ class DOMDistiller:
     """
 
     @staticmethod
-    def distill(dom_data: dict[str, Any]) -> dict[str, Any]:
+    def distill(dom_data: dict[str, Any], max_elements: int = 40) -> dict[str, Any]:
         """Distills raw DOM data.
 
         Args:
             dom_data: A dictionary containing 'title', 'url', and 'elements'.
-                'elements' should be a list of dictionaries with 'role', 'text',
-                'selector', and 'aria_label'.
+            max_elements: Maximum number of elements to include in each category.
 
         Returns:
             A dictionary with 'title', 'url', 'summary', and 'actions'.
@@ -30,25 +29,36 @@ class DOMDistiller:
             "actions": [],
         }
 
+        seen_texts: set[str] = set()
+
         for el in elements:
             role = el.get("role", "generic")
             text = el.get("text", "").strip()
+
+            # Deduplicate by text to avoid redundant nav links/buttons
+            if text and text.lower() in seen_texts:
+                continue
+            if text:
+                seen_texts.add(text.lower())
 
             # Filter out empty or useless elements
             if not text and role not in ["button", "link", "input"]:
                 continue
 
             item = {
-                "role": role,
-                "text": text,
-                "selector": el.get("selector"),  # To map back for highlighting
-                "aria_label": el.get("aria_label"),
+                "r": role,  # Shortened keys to save tokens
+                "t": text,
+                "s": el.get("selector"),
+                "l": el.get("aria_label"),
+                "v": el.get("in_viewport", False),  # v for visible/viewport
             }
 
             if role in ["button", "link", "input", "select"]:
-                distilled["actions"].append(item)
+                if len(distilled["actions"]) < max_elements:
+                    distilled["actions"].append(item)
             else:
-                distilled["summary"].append(item)
+                if len(distilled["summary"]) < max_elements:
+                    distilled["summary"].append(item)
 
         return distilled
 

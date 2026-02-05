@@ -42,5 +42,12 @@
 
 ## ✅ Verification & Judging Prep
 - [ ] **Demo Mode:** A "Split View" toggle to show Baseline vs. Aura.
-- [ ] **Latency Audit:** Ensure the "Real-time" judging criterion is met (< 2s response).
+- [x] **Latency Audit:** Implemented timing middleware and caching.
+- [x] **DOM Optimization:** Optimized scraping and distillation payload.
 - [ ] **README / GEMINI.md Update:** Finalize execution instructions for judges.
+
+## 🚀 Performance & Scale (Added)
+- [x] **Backend Caching:** TTL-based in-memory cache for explanations.
+- [x] **Token Compression:** Minimized JSON schema for LLM prompts.
+- [ ] **SSE/Streaming:** Transition from POST to SSE for real-time summaries.
+- [ ] **Viewport Priority:** Implement prioritized scraping for visible elements.

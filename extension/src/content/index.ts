@@ -4,19 +4,54 @@
  */
 
 export const scrapePage = () => {
-  const elements = document.querySelectorAll('button, a, input, h1, h2, h3, [role="button"]');
-  const distilledElements = Array.from(elements).map((el, index) => {
-    // Assign a temporary ID for tracking
-    const auraId = `aura-el-${index}`;
-    el.setAttribute('data-aura-id', auraId);
+  const elements = document.querySelectorAll('button, a, input, h1, h2, h3, [role="button"], [role="link"], [role="menuitem"]');
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
 
-    return {
-      role: el.tagName.toLowerCase() === 'a' ? 'link' : el.getAttribute('role') || el.tagName.toLowerCase(),
-      text: el.textContent?.trim() || (el as HTMLInputElement).placeholder || el.getAttribute('aria-label') || '',
-      selector: `[data-aura-id="${auraId}"]`,
-      aria_label: el.getAttribute('aria-label')
-    };
-  });
+  const distilledElements = Array.from(elements)
+    .filter(el => {
+      const style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+      
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 5 || rect.height < 5) return false;
+
+      return true;
+    })
+    .map((el, index) => {
+      let auraId = el.getAttribute('data-aura-id');
+      if (!auraId) {
+        auraId = `aura-el-${index}`;
+        el.setAttribute('data-aura-id', auraId);
+      }
+
+      const rect = el.getBoundingClientRect();
+      // Check if element is in viewport
+      const inViewport = (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= vh &&
+        rect.right <= vw
+      );
+
+      const text = (el.textContent?.trim() || (el as HTMLInputElement).placeholder || el.getAttribute('aria-label') || '').slice(0, 200);
+
+      return {
+        role: el.tagName.toLowerCase() === 'a' ? 'link' : el.getAttribute('role') || el.tagName.toLowerCase(),
+        text: text,
+        selector: `[data-aura-id="${auraId}"]`,
+        aria_label: el.getAttribute('aria-label'),
+        in_viewport: inViewport,
+        y: rect.top // Store vertical position for secondary sorting
+      };
+    })
+    .filter(item => item.text.length > 0 || ['input', 'button', 'link'].includes(item.role))
+    // Sort: In Viewport first, then by vertical position (y)
+    .sort((a, b) => {
+      if (a.in_viewport && !b.in_viewport) return -1;
+      if (!a.in_viewport && b.in_viewport) return 1;
+      return a.y - b.y;
+    });
 
   return {
     title: document.title,
