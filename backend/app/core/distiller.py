@@ -111,10 +111,14 @@ class DOMDistiller:
 
         logger.info(f"Distilling raw HTML from URL: {url}")
         try:
+            # Use faster parser if available, or stay with html.parser
             soup = BeautifulSoup(html, "html.parser")
             title_tag = soup.title
             title = title_tag.string if title_tag else "No Title Found"
 
+            # Focus distillation only on body to avoid script/head noise
+            body = soup.body if soup.body else soup
+            
             distilled_summary: list[DistilledElement] = []
             distilled_actions: list[DistilledElement] = []
             seen_texts: set[str] = set()
@@ -130,9 +134,12 @@ class DOMDistiller:
                 "select": "select",
             }
 
+            # Selective search instead of full tree traversal
             for tag, role in tags_to_roles.items():
-                elements = soup.find_all(tag)
+                # Limit search to the first 200 elements per tag for performance
+                elements = body.find_all(tag, limit=200)
                 logger.debug(f"Found {len(elements)} elements for tag <{tag}>")
+                
                 for el in elements:
                     text = el.get_text().strip()
                     if not text and tag == "input":

@@ -236,17 +236,9 @@ chrome.runtime.onMessage.addListener(
 
 // --- UI Injection ---
 
-const initFloatingUI = () => {
-    // Check if already injected
-    if (document.getElementById('aura-extension-root')) return;
-
-    const container = document.createElement('div');
-    container.id = 'aura-extension-mount';
-    document.body.appendChild(container);
-
-    const root = createRoot(container);
+const FloatingContainer = () => {
+    const [showSettings, setShowSettings] = React.useState(false);
     
-    // We'll inject some basic styles that the components might need
     const baseStyles = `
         :host { --aura-primary: #6366f1; }
         .aura-container { font-family: system-ui, sans-serif; }
@@ -259,17 +251,27 @@ const initFloatingUI = () => {
         }
     `;
 
-    const [showSettings, setShowSettings] = React.useState(false);
-
-    root.render(
-      <React.StrictMode>
-        <ShadowRoot css={[baseStyles]}>
-          <FloatingWindow title="Aura AI" setShowSettings={setShowSettings}>
-            <FloatingApp externalShowSettings={showSettings} onSettingsOpen={() => setShowSettings(false)} />
-          </FloatingWindow>
-        </ShadowRoot>
-      </React.StrictMode>
+    return (
+        <React.StrictMode>
+            <ShadowRoot css={[baseStyles]}>
+                <FloatingWindow title="Aura AI" setShowSettings={setShowSettings}>
+                    <FloatingApp externalShowSettings={showSettings} onSettingsOpen={() => setShowSettings(false)} />
+                </FloatingWindow>
+            </ShadowRoot>
+        </React.StrictMode>
     );
+};
+
+const initFloatingUI = () => {
+    // Check if already injected
+    if (document.getElementById('aura-extension-root')) return;
+
+    const container = document.createElement('div');
+    container.id = 'aura-extension-mount';
+    document.body.appendChild(container);
+
+    const root = createRoot(container);
+    root.render(<FloatingContainer />);
 };
 
 // Wait for body to be available
@@ -299,5 +301,60 @@ const initializePrefetchListeners = () => {
 };
 
 initializePrefetchListeners();
+
+const initializeStruggleDetection = () => {
+    let clickCount = 0;
+    let clickTimer: number | undefined;
+    let lastScrollPos = window.scrollY;
+    let scrollDirectionChanges = 0;
+    let lastDirection = 0; // 1 for down, -1 for up
+
+    // Rage Click Detection (e.g., 5 clicks in 2 seconds)
+    document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+        const isInteractive = target.closest('button, a, input, [role="button"]');
+        
+        if (!isInteractive) {
+            clickCount++;
+            if (!clickTimer) {
+                clickTimer = window.setTimeout(() => {
+                    if (clickCount >= 5) {
+                        console.log("Aura: Rage clicks detected!");
+                        chrome.runtime.sendMessage({ type: "STRUGGLE_DETECTED" }).catch(() => {});
+                    }
+                    clickCount = 0;
+                    clickTimer = undefined;
+                }, 2000);
+            }
+        }
+    });
+
+    // Rapid Scrolling / Looping Detection
+    window.addEventListener('scroll', () => {
+        const currentScroll = window.scrollY;
+        const direction = currentScroll > lastScrollPos ? 1 : -1;
+
+        if (direction !== lastDirection && Math.abs(currentScroll - lastScrollPos) > 50) {
+            scrollDirectionChanges++;
+            lastDirection = direction;
+
+            // If user changes direction 6 times quickly (3 full loops)
+            if (scrollDirectionChanges >= 6) {
+                console.log("Aura: Scroll looping detected!");
+                chrome.runtime.sendMessage({ type: "STRUGGLE_DETECTED" }).catch(() => {});
+                scrollDirectionChanges = 0;
+            }
+        }
+        lastScrollPos = currentScroll;
+
+        // Reset scroll changes after some time of inactivity
+        window.clearTimeout((window as any).auraScrollTimer);
+        (window as any).auraScrollTimer = window.setTimeout(() => {
+            scrollDirectionChanges = 0;
+        }, 3000);
+    });
+};
+
+initializeStruggleDetection();
 
 console.log("Aura Content Script (Floating UI) Active.");
