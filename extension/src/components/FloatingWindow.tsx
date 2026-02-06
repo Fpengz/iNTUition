@@ -22,6 +22,7 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const windowRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -155,6 +156,49 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
   };
 
   if (isMinimized) {
+      if (!hasInteracted) {
+          return (
+              <div 
+                style={{
+                    ...containerStyle, 
+                    width: '52px', 
+                    height: '52px', 
+                    cursor: isDragging ? 'grabbing' : 'grab', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    padding: 0,
+                    borderRadius: '50%'
+                }}
+                onClick={(e) => {
+                    const dragDist = Math.sqrt(
+                        Math.pow(e.clientX - dragStartPos.current.x, 2) + 
+                        Math.pow(e.clientY - dragStartPos.current.y, 2)
+                    );
+                    if (dragDist < 5) setHasInteracted(true);
+                }}
+                className="aura-drag-handle"
+                onMouseDown={handleMouseDown}
+              >
+                  <div style={{ 
+                      width: '36px', 
+                      height: '36px', 
+                      background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+                      borderRadius: '50%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      color: 'white', 
+                      fontWeight: 'bold', 
+                      fontSize: '18px',
+                      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  }}>
+                    A
+                  </div>
+              </div>
+          );
+      }
+
       return (
           <div 
             style={{
@@ -173,7 +217,12 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
             onMouseDown={handleMouseDown}
           >
               <button 
-                onClick={(e) => { e.stopPropagation(); setIsMinimized(false); saveState({ minimized: false }); }}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setHasInteracted(false); // Reset for next time it minimizes
+                    setIsMinimized(false); 
+                    saveState({ minimized: false }); 
+                }}
                 style={{ 
                     flex: 1, 
                     height: '36px', 
@@ -192,7 +241,12 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </button>
               <button 
-                onClick={(e) => { e.stopPropagation(); setIsMinimized(false); saveState({ minimized: false }); }}
+                onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setHasInteracted(false); // Reset for next time
+                    setIsMinimized(false); 
+                    saveState({ minimized: false }); 
+                }}
                 style={{ 
                     flex: 4, 
                     height: '36px', 
