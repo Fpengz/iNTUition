@@ -23,6 +23,9 @@ export const scrapePage = () => {
 
   const distilledElements = Array.from(elements)
     .filter(el => {
+      // EXCLUDE AURA'S OWN UI
+      if (el.closest('#aura-extension-mount') || el.closest('#aura-extension-root')) return false;
+
       const style = window.getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
       const rect = el.getBoundingClientRect();
@@ -120,6 +123,9 @@ const applyAdaptations = (adaptations: any) => {
     } else if (layout_mode === "focus") {
         document.body.classList.add("aura-focus-mode");
         document.querySelectorAll("body > *:not(script):not(style)").forEach(el => {
+            // NEVER dim Aura itself
+            if (el.id === 'aura-extension-mount' || el.id === 'aura-extension-root') return;
+
             const hasHighlight = el.querySelector(".aura-highlight-active") || el.classList.contains("aura-highlight-active");
             if (!hasHighlight) {
                 el.classList.add("aura-dimmed");

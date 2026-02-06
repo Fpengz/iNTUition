@@ -70,46 +70,65 @@ class ThemeManager {
       }
 
       /* Base layout elements should be transparent to show body bg */
-      div, section, nav, article, aside, main, header, footer {
+      div:not(#aura-extension-root *), 
+      section:not(#aura-extension-root *), 
+      nav:not(#aura-extension-root *), 
+      article:not(#aura-extension-root *), 
+      aside:not(#aura-extension-root *), 
+      main:not(#aura-extension-root *), 
+      header:not(#aura-extension-root *), 
+      footer:not(#aura-extension-root *) {
         background-color: transparent !important;
         color: inherit !important;
         border-color: #333 !important;
       }
 
       /* Text safety */
-      p, span, h1, h2, h3, h4, h5, h6, li, td, th {
+      p:not(#aura-extension-root *), 
+      span:not(#aura-extension-root *), 
+      h1:not(#aura-extension-root *), 
+      h2:not(#aura-extension-root *), 
+      h3:not(#aura-extension-root *), 
+      h4:not(#aura-extension-root *), 
+      h5:not(#aura-extension-root *), 
+      h6:not(#aura-extension-root *), 
+      li:not(#aura-extension-root *), 
+      td:not(#aura-extension-root *), 
+      th:not(#aura-extension-root *) {
         color: #e0e0e0 !important;
       }
 
       /* Links */
-      a {
+      a:not(#aura-extension-root *) {
         color: #8ab4f8 !important;
         text-decoration: underline !important;
       }
 
       /* Form elements */
-      input, textarea, select, button {
+      input:not(#aura-extension-root *), 
+      textarea:not(#aura-extension-root *), 
+      select:not(#aura-extension-root *), 
+      button:not(#aura-extension-root *) {
         background-color: #1e1e1e !important;
         color: #e0e0e0 !important;
         border: 1px solid #444 !important;
       }
 
       /* Media Protection: NEVER invert or dim images/videos too much */
-      img, video, canvas, iframe, [role="img"] {
+      img:not(#aura-extension-root *), 
+      video:not(#aura-extension-root *), 
+      canvas:not(#aura-extension-root *), 
+      iframe:not(#aura-extension-root *), 
+      [role="img"]:not(#aura-extension-root *) {
         filter: brightness(0.8) contrast(1.1) !important;
         background-color: transparent !important;
-      }
-
-      /* Keep Aura UI safe */
-      #aura-extension-mount, #aura-extension-root {
-        filter: none !important;
       }
     `;
   }
 
   private getHighContrastCSS(): string {
     return `
-      * {
+      *:not(#aura-extension-root *):not(#aura-extension-mount *) {
         background-color: #000000 !important;
         color: #ffffff !important;
         border-color: #ffffff !important;
@@ -118,13 +137,16 @@ class ThemeManager {
         transition: background-color 0.2s ease, color 0.2s ease !important;
       }
 
-      a, a * {
+      a:not(#aura-extension-root *), a:not(#aura-extension-root *) * {
         color: #ffff00 !important;
         text-decoration: underline !important;
         font-weight: bold !important;
       }
 
-      input, textarea, select, button {
+      input:not(#aura-extension-root *), 
+      textarea:not(#aura-extension-root *), 
+      select:not(#aura-extension-root *), 
+      button:not(#aura-extension-root *) {
         background-color: #000000 !important;
         color: #ffffff !important;
         border: 2px solid #ffffff !important;
@@ -132,20 +154,19 @@ class ThemeManager {
       }
 
       /* Critical Media Protection */
-      img, video, canvas, iframe, [role="img"] {
+      img:not(#aura-extension-root *), 
+      video:not(#aura-extension-root *), 
+      canvas:not(#aura-extension-root *), 
+      iframe:not(#aura-extension-root *), 
+      [role="img"]:not(#aura-extension-root *) {
         filter: none !important;
         border: 2px solid #ffffff !important;
       }
 
       /* Highlight active elements */
-      :focus {
+      :focus:not(#aura-extension-root *) {
         outline: 4px solid #ffff00 !important;
         outline-offset: 2px !important;
-      }
-
-      /* Keep Aura UI safe */
-      #aura-extension-mount, #aura-extension-root, #aura-extension-root * {
-        all: revert; /* Attempt to protect extension UI */
       }
     `;
   }
