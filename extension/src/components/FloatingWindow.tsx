@@ -132,20 +132,6 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
     };
   }, [isDragging, isResizing, position, size, saveState]);
 
-  const handleToggleClick = (e: React.MouseEvent) => {
-      // If we dragged more than 5 pixels, don't toggle
-      const dragDist = Math.sqrt(
-          Math.pow(e.clientX - dragStartPos.current.x, 2) + 
-          Math.pow(e.clientY - dragStartPos.current.y, 2)
-      );
-      
-      if (dragDist < 5) {
-          const nextMinimized = !isMinimized;
-          setIsMinimized(nextMinimized);
-          saveState({ minimized: nextMinimized });
-      }
-  };
-
   const containerStyle: React.CSSProperties = {
     position: 'fixed',
     left: position.x,
