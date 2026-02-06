@@ -27,13 +27,7 @@ def init_db():
             )
         """)
 
-def save_feedback(aura_id: str, url: str, helpful: bool, comment: str | None = None):
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "INSERT INTO feedback (aura_id, url, helpful, comment) VALUES (?, ?, ?, ?)",
-            (aura_id, url, 1 if helpful else 0, comment)
-        )
-    logger.info(f"Identity: Feedback received from {aura_id} for {url} (Helpful: {helpful})")
+def save_profile(profile: UserProfile):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO profiles (aura_id, profile_json) VALUES (?, ?)",
@@ -48,6 +42,14 @@ def load_profile(aura_id: str) -> UserProfile | None:
         if row:
             return UserProfile.model_validate_json(row[0])
     return None
+
+def save_feedback(aura_id: str, url: str, helpful: bool, comment: str | None = None):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "INSERT INTO feedback (aura_id, url, helpful, comment) VALUES (?, ?, ?, ?)",
+            (aura_id, url, 1 if helpful else 0, comment)
+        )
+    logger.info(f"Identity: Feedback received from {aura_id} for {url} (Helpful: {helpful})")
 
 # Initialize on import for simplicity in a demo
 init_db()

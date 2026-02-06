@@ -30,6 +30,7 @@ from app.schemas import (
     DistilledElement,
     DOMData,
     ExplanationResponse,
+    FeedbackRequest,
     PrefetchRequest,
     TTSRequest,
     UserProfile,
