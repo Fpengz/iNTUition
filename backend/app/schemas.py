@@ -75,6 +75,7 @@ class ModalityPreferences(BaseModel):
 class UserProfile(BaseModel):
     """Represents the user's persistent accessibility identity."""
     aura_id: str = Field(default="guest-user", description="Unique ID for persistent profile storage")
+    theme: Literal["none", "dark", "contrast"] = "none"
     cognitive: CognitiveProfile = Field(default_factory=CognitiveProfile)
     motor: MotorProfile = Field(default_factory=MotorProfile)
     sensory: SensoryProfile = Field(default_factory=SensoryProfile)

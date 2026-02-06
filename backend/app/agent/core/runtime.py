@@ -70,12 +70,13 @@ class AccessibilityRuntime:
                 "action": "apply_ui",
                 "ui_command": {
                     "layout_mode": adaptation.layout_mode,
+                    "theme": adaptation.theme,
                     "hide": safe_hide,
                     "highlight": adaptation.highlight_elements,
                     "explanation": adaptation.explanation,
                     "risk_level": assessment.risk_level,
                     "complexity": assessment.complexity_score,
-                    "apply_bionic": apply_bionic
+                    "apply_bionic": should_apply_bionic(user_profile)
                 },
                 "mode": "phased_agent"
             }
@@ -113,6 +114,7 @@ class AccessibilityRuntime:
                 "hide": [el.selector for el in dom_data.elements if el.role in ["link", "nav"]][:3],
                 "highlight": [el.selector for el in dom_data.elements if el.role == "button"][:1],
                 "layout_mode": "focus" if user_profile.cognitive_needs else "simplified",
+                "theme": None,
                 "explanation": explanation,
                 "risk_level": "medium",
                 "complexity": 7,

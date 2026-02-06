@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import ShadowRoot from './ShadowRoot';
 import FloatingWindow from '../components/FloatingWindow';
 import FloatingApp from './FloatingApp';
+import { themeManager } from './ThemeManager';
+import type { AuraTheme } from './ThemeManager';
 import { textVide } from "text-vide";
 
 /**
@@ -94,10 +96,11 @@ const applyBionicReading = () => {
 };
 
 const applyAdaptations = (adaptations: any) => {
-    const { hide_elements, highlight_elements, layout_mode, apply_bionic } = adaptations;
+    const { hide_elements, highlight_elements, layout_mode, apply_bionic, theme } = adaptations;
     resetAdaptations();
 
     if (apply_bionic) applyBionicReading();
+    if (theme) themeManager.applyTheme(theme as AuraTheme);
 
     hide_elements?.forEach((selector: string) => {
         const el = document.querySelector(selector);
@@ -176,6 +179,8 @@ window.addEventListener('message', (event) => {
         window.postMessage({ type: 'AURA_DOM_RESPONSE', data }, '*');
     } else if (event.data.type === 'AURA_ADAPT_UI') {
         applyAdaptations(event.data.adaptations);
+    } else if (event.data.type === 'AURA_SET_THEME') {
+        themeManager.applyTheme(event.data.theme as AuraTheme);
     }
 });
 
@@ -183,7 +188,7 @@ window.addEventListener('message', (event) => {
 
 chrome.runtime.onMessage.addListener(
   (
-    request: { action: string; selector?: string; adaptations?: any },
+    request: { action: string; selector?: string; adaptations?: any; theme?: string },
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ) => {
@@ -210,6 +215,9 @@ chrome.runtime.onMessage.addListener(
         } else {
             sendResponse({ error: "Element not found" });
         }
+    } else if (request.action === "SET_THEME" && request.theme) {
+        themeManager.applyTheme(request.theme as AuraTheme);
+        sendResponse({ success: true });
     }
     return true;
   }

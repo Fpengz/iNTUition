@@ -35,6 +35,7 @@ interface ModalityPreferences {
 
 interface UserProfile {
   aura_id: string;
+  theme: 'none' | 'dark' | 'contrast';
   cognitive: CognitiveProfile;
   motor: MotorProfile;
   sensory: SensoryProfile;
@@ -43,6 +44,7 @@ interface UserProfile {
 
 const DEFAULT_PROFILE: UserProfile = {
     aura_id: 'guest-' + Math.random().toString(36).substring(7),
+    theme: 'none',
     cognitive: { support_level: 'none', simplify_language: true, reduce_distractions: true, memory_aids: false },
     motor: { precision_required: 'normal', click_assistance: false, keyboard_only: false, target_upscaling: false },
     sensory: { vision_acuity: 'normal', color_blindness: null, audio_sensitivity: false, high_contrast: false },
@@ -83,6 +85,11 @@ const FloatingApp: React.FC = () => {
       }
       
       setUserProfile(newProfile);
+
+      // Apply theme change immediately
+      if (category === 'theme') {
+          window.postMessage({ type: 'AURA_SET_THEME', theme: updates }, '*');
+      }
       
       if (typeof chrome !== 'undefined' && chrome.storage) {
           chrome.storage.local.set({ auraUserProfile: newProfile });
@@ -239,6 +246,18 @@ const FloatingApp: React.FC = () => {
 
       {showSettings ? (
           <div className="settings-panel" style={{ padding: '0.4rem', fontSize: '0.8rem' }}>
+              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
+                  <label>Appearance:</label>
+                  <select 
+                    value={userProfile.theme}
+                    onChange={(e) => handleProfileChange('theme', e.target.value)}
+                    style={{ fontSize: '0.75rem', padding: '2px' }}
+                  >
+                      <option value="none">Default</option>
+                      <option value="dark">Dark Mode</option>
+                      <option value="contrast">High Contrast</option>
+                  </select>
+              </div>
               <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
                   <label>Support Level:</label>
                   <select 

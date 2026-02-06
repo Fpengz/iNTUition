@@ -65,6 +65,25 @@ class AuraExplainer:
         """
         return prompt
 
+    def _clean_llm_json(self, content: str) -> str:
+        """Cleans and extracts JSON from LLM response strings."""
+        if not content:
+            return "{}"
+        
+        # Remove markdown code blocks if present
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0]
+            
+        # Attempt to find the first '{' and last '}'
+        start = content.find("{")
+        end = content.rfind("}")
+        if start != -1 and end != -1:
+            content = content[start:end + 1]
+            
+        return content.strip()
+
     async def explain_page(
         self,
         distilled_data: DistilledData,
@@ -75,14 +94,20 @@ class AuraExplainer:
         prompt = self._prepare_explain_prompt(distilled_data, user_profile)
         try:
             response = await self.provider.generate(prompt)
-            content = response.content if response.content else "{}"
-            
-            # Clean potential markdown
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
+            raw_content = response.content if response.content else "{}"
+            content = self._clean_llm_json(raw_content)
             
             logger.debug(f"Raw LLM Response for {distilled_data.url}: {content[:100]}...")
-            explanation = ExplanationResponse.model_validate_json(content)
+            
+            try:
+                explanation = ExplanationResponse.model_validate_json(content)
+            except Exception as ve:
+                logger.warning(f"JSON validation failed for {distilled_data.url}: {ve}. Falling back to default.")
+                explanation = ExplanationResponse(
+                    summary="Aura analyzed the page but encountered a formatting issue. The interface appears to be accessible.",
+                    actions=[]
+                )
+                
             logger.info(f"Successfully generated explanation for {distilled_data.url}")
             return explanation
         except Exception as e:
@@ -99,11 +124,16 @@ class AuraExplainer:
         prompt = self._prepare_explain_prompt(distilled_data, user_profile)
         try:
             response_text = await self.provider.generate(prompt)
-            content = response_text.content if response_text.content else "{}"
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
+            raw_content = response_text.content if response_text.content else "{}"
+            content = self._clean_llm_json(raw_content)
 
-            explanation_data = ExplanationResponse.model_validate_json(content)
+            try:
+                explanation_data = ExplanationResponse.model_validate_json(content)
+            except Exception:
+                explanation_data = ExplanationResponse(
+                    summary="Aura is ready to assist. Please try again if the content didn't load properly.",
+                    actions=[]
+                )
 
             if explanation_data.summary:
                 logger.debug(f"Yielding summary chunk for {distilled_data.url}")
@@ -144,11 +174,8 @@ class AuraExplainer:
         """
         try:
             response = await self.provider.generate(prompt)
-            content = response.content if response.content else ""
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "{" in content:
-                content = content[content.find("{") : content.rfind("}") + 1]
+            raw_content = response.content if response.content else ""
+            content = self._clean_llm_json(raw_content)
 
             action_response = ActionResponse.model_validate_json(content)
             logger.info(f"Action found for '{query}': {action_response.selector}")

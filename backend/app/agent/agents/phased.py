@@ -33,8 +33,11 @@ adaptation_agent = Agent(
         "2. Respect the user's 'language_level': "
         "   - If 'simple': Use short sentences, no jargon, and focus on the 'What' and 'Next Step'. "
         "   - If 'detailed': Provide a comprehensive technical summary. "
-        "3. NEVER hide the primary content container. "
-        "4. Hide only secondary noise (navbars, sidebars, ads)."
+        "3. THEME RECOMMENDATION: "
+        "   - If the page looks bright and the user has sensory needs, suggest 'dark'. "
+        "   - If the contrast looks low or text is small, suggest 'contrast'. "
+        "4. NEVER hide the primary content container. "
+        "5. Hide only secondary noise (navbars, sidebars, ads)."
     )
 )
 

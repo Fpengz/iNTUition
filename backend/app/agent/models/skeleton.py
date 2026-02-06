@@ -17,6 +17,7 @@ class AccessibilityAssessment(BaseModel):
 class UIAdaptationDecision(BaseModel):
     overloaded: bool
     layout_mode: Literal["normal", "simplified", "focus"]
+    theme: Optional[Literal["dark", "contrast"]] = None
     hide_elements: List[str]
     highlight_elements: List[str]
     explanation: str
