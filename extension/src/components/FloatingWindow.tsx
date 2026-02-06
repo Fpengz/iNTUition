@@ -43,6 +43,18 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
           setIsMinimized(!!minimized);
         }
       });
+
+      const handleStorageChange = (changes: any, area: string) => {
+        if (area === 'local' && changes[storageKey]) {
+          const newState = changes[storageKey].newValue;
+          if (newState && typeof newState.minimized === 'boolean') {
+            setIsMinimized(newState.minimized);
+          }
+        }
+      };
+
+      chrome.storage.onChanged.addListener(handleStorageChange);
+      return () => chrome.storage.onChanged.removeListener(handleStorageChange);
     }
   }, [storageKey, defaultSize.width, defaultSize.height]);
 

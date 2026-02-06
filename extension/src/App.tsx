@@ -63,7 +63,18 @@ function App() {
   const [proactivePrompt, setProactivePrompt] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
-  // ... (rest of logic)
+  // Coordination: Minimize floating UI when side panel opens
+  useEffect(() => {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+        const storageKey = 'aura-floating-window-state';
+        chrome.storage.local.get(storageKey, (result) => {
+            const data = result[storageKey] || {};
+            chrome.storage.local.set({ 
+                [storageKey]: { ...data, minimized: true } 
+            });
+        });
+    }
+  }, []);
 
   const handleFeedback = async (helpful: boolean) => {
     try {
