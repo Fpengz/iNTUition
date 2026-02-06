@@ -66,7 +66,13 @@ The backend's `DOMDistiller` further processes this data, deduplicating elements
 
 ## Future Vision: Agentic Aura
 
-To move beyond single-turn explanations, a long-term architectural vision has been created to evolve Aura into a proactive, agentic web assistant capable of multi-step tasks.
+To move beyond single-turn explanations, a long-term architectural vision has been created to evolve Aura into a proactive, agentic web assistant capable of multi-step tasks. This vision is built on **12 Core Architectural Principles** designed to ensure robustness, safety, and demonstrability.
 
-For more details, see [AGENTIC_ARCHITECTURE.md](./AGENTIC_ARCHITECTURE.md).
+### Key Pillars
+1.  **Robust Vision Judge:** A closed-loop verification pipeline that "sees" UI changes to ensure accessibility adaptations don't break layout or usability.
+2.  **Deterministic Tool Chains:** Separating the LLM's "decision making" from the Runtime's "code execution" to prevent hallucinations.
+3.  **Heuristic Gating:** Using lightweight signals (rage clicks, scroll loops) to trigger expensive AI agents only when necessary.
+4.  **Instant Rollback:** A safety-first mechanism to immediately revert any adaptation that fails verification.
+
+For the full architectural blueprint and design philosophy, see [AGENTIC_ARCHITECTURE.md](./AGENTIC_ARCHITECTURE.md).
 
