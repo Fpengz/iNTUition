@@ -272,7 +272,7 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
                 Explain Page
               </button>
           </div>
-      );      );
+      );
   }
 
   return (
