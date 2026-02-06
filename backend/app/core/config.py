@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: Literal["ollama", "gemini", "openai"] = "ollama"
     
     # Google Gemini Configuration
-    GEMINI_API_KEY: str = "your_key"
+    GEMINI_API_KEY: str | None = None
     GOOGLE_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "qwen3:8b"
     
     # OpenAI Configuration
-    OPENAI_API_KEY: str = "your_key"
+    OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-4o"
     
     # Server Configuration
