@@ -173,34 +173,58 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
           <div 
             style={{
                 ...containerStyle, 
-                width: '52px', 
-                height: '52px', 
+                width: '140px', 
+                height: '44px', 
                 cursor: isDragging ? 'grabbing' : 'grab', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                padding: 0
+                padding: '4px',
+                borderRadius: '22px',
+                gap: '4px'
             }}
-            onClick={handleToggleClick}
             className="aura-drag-handle"
             onMouseDown={handleMouseDown}
           >
-              <div style={{ 
-                  width: '36px', 
-                  height: '36px', 
-                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
-                  borderRadius: '50%', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  color: 'white', 
-                  fontWeight: 'bold', 
-                  fontSize: '18px',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                  transition: 'transform 0.2s ease'
-              }}>
-                A
-              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsMinimized(false); saveState({ minimized: false }); }}
+                style={{ 
+                    flex: 1, 
+                    height: '36px', 
+                    background: 'white', 
+                    border: '1px solid rgba(0,0,0,0.05)',
+                    borderRadius: '18px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    color: '#64748b', 
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}
+                title="Settings"
+              >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setIsMinimized(false); saveState({ minimized: false }); }}
+                style={{ 
+                    flex: 4, 
+                    height: '36px', 
+                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+                    border: 'none',
+                    borderRadius: '18px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    color: 'white', 
+                    fontWeight: 'bold', 
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                }}
+              >
+                Explain
+              </button>
           </div>
       );
   }
