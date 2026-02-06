@@ -67,9 +67,17 @@ style.textContent = `
   .aura-highlight-active {
     outline: 5px solid #6366f1 !important;
     outline-offset: 4px !important;
-    transition: outline 0.3s ease-in-out !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
     z-index: 10000 !important;
+    transform: scale(1.05); /* Default slight scale for visibility */
+  }
+
+  .aura-upscaled {
+    transform: scale(1.25) !important;
+    z-index: 10001 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    cursor: pointer !important;
   }
   
   .aura-focus-mode .aura-dimmed {
@@ -82,13 +90,118 @@ style.textContent = `
   .aura-simplified-mode [data-aura-hidden="true"] {
     display: none !important;
   }
+
+  /* Tooltip for Semantic Annotation */
+  .aura-annotation-tooltip {
+      position: absolute;
+      background: #1e293b;
+      color: white;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      z-index: 10002;
+      pointer-events: none;
+      max-width: 200px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-top: 8px;
+  }
 `;
 document.head.appendChild(style);
+
+  /* Focus Portal - Phase B */
+  #aura-focus-portal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.98);
+      z-index: 20000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+      display: none; /* Hidden by default */
+  }
+
+  .portal-content {
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      animation: aura-slide-up 0.4s ease-out;
+  }
+
+  .portal-explanation {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 2rem;
+      line-height: 1.4;
+  }
+
+  .portal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+  }
+
+  .portal-btn {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 1.25rem;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+  }
+
+  .portal-btn:hover {
+      background: #4f46e5;
+      transform: translateY(-2px);
+  }
+
+  .portal-exit {
+      margin-top: 3rem;
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      color: #64748b;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+  }
+
+  @keyframes aura-slide-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+  }
+`;
+document.head.appendChild(style);
+
+// Create the Portal element once
+const portal = document.createElement("div");
+portal.id = "aura-focus-portal";
+portal.innerHTML = `
+    <div class="portal-content">
+        <div id="aura-portal-explanation" class="portal-explanation"></div>
+        <div id="aura-portal-actions" class="portal-actions"></div>
+        <button class="portal-exit" id="aura-portal-exit">Back to Full Page</button>
+    </div>
+`;
+document.body.appendChild(portal);
+
+document.getElementById("aura-portal-exit")?.addEventListener("click", () => {
+    portal.style.display = "none";
+});
 
 // Listen for messages from the Popup/Sidecar
 chrome.runtime.onMessage.addListener(
   (
-    request: { action: string; selector?: string; adaptations?: any },
+    request: { action: string; selector?: string; adaptations?: any; explanation?: string; main_actions?: string[] },
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ) => {
@@ -121,37 +234,76 @@ chrome.runtime.onMessage.addListener(
       }
     } else if (request.action === "ADAPT_UI" && request.adaptations) {
         console.log("Aura: Applying UI adaptations:", request.adaptations);
-        const { hide_elements, highlight_elements, layout_mode } = request.adaptations;
+        const { hide_elements, highlight_elements, layout_mode, explanation } = request.adaptations;
 
         // Reset previous adaptations
         document.querySelectorAll(".aura-highlight-active").forEach(el => el.classList.remove("aura-highlight-active"));
+        document.querySelectorAll(".aura-upscaled").forEach(el => el.classList.remove("aura-upscaled"));
+        document.querySelectorAll(".aura-annotation-tooltip").forEach(el => el.remove());
         document.body.classList.remove("aura-focus-mode", "aura-simplified-mode");
         document.querySelectorAll("[data-aura-hidden]").forEach(el => (el as HTMLElement).removeAttribute("data-aura-hidden"));
         document.querySelectorAll(".aura-dimmed").forEach(el => el.classList.remove("aura-dimmed"));
+        portal.style.display = "none";
 
-        // Apply hiding
+        // Apply Focus Portal (Option 3: Semantic Overlay)
+        if (layout_mode === "focus") {
+            const explanationEl = document.getElementById("aura-portal-explanation");
+            const actionsEl = document.getElementById("aura-portal-actions");
+            
+            if (explanationEl && actionsEl) {
+                explanationEl.textContent = explanation || "Aura has simplified this page for you.";
+                actionsEl.innerHTML = ""; // Clear actions
+                
+                // Populate the Portal with actual buttons linking to original DOM
+                highlight_elements?.forEach((selector: string) => {
+                    const originalEl = document.querySelector(selector) as HTMLElement;
+                    if (originalEl) {
+                        const btn = document.createElement("button");
+                        btn.className = "portal-btn";
+                        btn.textContent = originalEl.textContent?.trim() || "Complete Action";
+                        btn.onclick = () => {
+                            portal.style.display = "none";
+                            originalEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                            originalEl.click();
+                            // Visual feedback on original
+                            originalEl.classList.add("aura-highlight-active");
+                            setTimeout(() => originalEl.classList.remove("aura-highlight-active"), 2000);
+                        };
+                        actionsEl.appendChild(btn);
+                    }
+                });
+                
+                portal.style.display = "flex";
+                sendResponse({ success: true, status: "focus_portal_active" });
+                return;
+            }
+        }
+
+        // Apply hiding (Option 2: Simplification)
         hide_elements?.forEach((selector: string) => {
             const el = document.querySelector(selector);
             if (el) (el as HTMLElement).setAttribute("data-aura-hidden", "true");
         });
 
-        // Apply highlighting
+        // Apply highlighting and upscaling (Option 2: Motor/Visual Guidance)
         highlight_elements?.forEach((selector: string) => {
-            const el = document.querySelector(selector);
-            if (el) el.classList.add("aura-highlight-active");
+            const el = document.querySelector(selector) as HTMLElement;
+            if (el) {
+                el.classList.add("aura-highlight-active");
+                el.classList.add("aura-upscaled");
+                
+                const tooltip = document.createElement("div");
+                tooltip.className = "aura-annotation-tooltip";
+                tooltip.textContent = "Recommended Action";
+                document.body.appendChild(tooltip);
+                
+                const rect = el.getBoundingClientRect();
+                tooltip.style.left = `${rect.left + window.scrollX}px`;
+                tooltip.style.top = `${rect.bottom + window.scrollY}px`;
+            }
         });
 
-        // Apply layout modes
-        if (layout_mode === "focus") {
-            document.body.classList.add("aura-focus-mode");
-            // Dim everything except highlighted or essential elements
-            document.querySelectorAll("body > *:not(script):not(style)").forEach(el => {
-                const hasHighlight = el.querySelector(".aura-highlight-active") || el.classList.contains("aura-highlight-active");
-                if (!hasHighlight) {
-                    el.classList.add("aura-dimmed");
-                }
-            });
-        } else if (layout_mode === "simplified") {
+        if (layout_mode === "simplified") {
             document.body.classList.add("aura-simplified-mode");
         }
 
@@ -159,6 +311,8 @@ chrome.runtime.onMessage.addListener(
     } else if (request.action === "RESET_UI") {
         console.log("Aura: Resetting UI adaptations...");
         document.querySelectorAll(".aura-highlight-active").forEach(el => el.classList.remove("aura-highlight-active"));
+        document.querySelectorAll(".aura-upscaled").forEach(el => el.classList.remove("aura-upscaled"));
+        document.querySelectorAll(".aura-annotation-tooltip").forEach(el => el.remove());
         document.body.classList.remove("aura-focus-mode", "aura-simplified-mode");
         document.querySelectorAll("[data-aura-hidden]").forEach(el => (el as HTMLElement).removeAttribute("data-aura-hidden"));
         document.querySelectorAll(".aura-dimmed").forEach(el => el.classList.remove("aura-dimmed"));

@@ -51,13 +51,14 @@ class AccessibilityRuntime:
 
     def _get_mock_response(self, dom_data: DOMData, user_profile: UserProfile):
         """Returns a high-quality mock response for demo stability."""
+        site_name = dom_data.title or "this website"
         return {
             "action": "adapt",
             "ui_changes": {
                 "hide_elements": [el.selector for el in dom_data.elements if el.role in ["link", "nav"]][:3],
                 "highlight_elements": [el.selector for el in dom_data.elements if el.role == "button"][:1],
                 "layout_mode": "focus" if user_profile.cognitive_needs else "simplified",
-                "explanation": "Aura has simplified the page to focus on your primary goal: " + (dom_data.title or "navigating the site")
+                "explanation": f"Aura is helping you navigate {site_name}. I've focused the view on the most important actions and simplified the interface to make it easier to reach your goals."
             },
             "verdict": {
                 "compliant": True,
