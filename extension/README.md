@@ -20,7 +20,13 @@ Raw data is sent to the Backend (`backend/app/core/distiller.py`) for processing
 - **Filtering:** Removes empty or non-functional elements.
 - **Classification:** Categorizes elements into `Actions` (interactive) and `Summary` (informational) to optimize LLM context.
 
-### 4. Event Listener Implementation
+### 4. Structural UI Adaptation (Adaptive Runtime)
+Beyond data extraction, Aura performs real-time structural modifications to the DOM:
+- **Surgical Augmentation:** Injects CSS transforms to upscale primary interactive elements (Target Upscaling) and adds semantic tooltips for guidance.
+- **Focus Portal:** A high-z-index "Stage" that physically isolates essential elements from the rest of the page, pulling them into a distraction-free modal while maintaining functional links to the original site logic.
+- **Reversibility:** Every adaptation is tracked and can be instantly rolled back using the `RESET_UI` action.
+
+### 5. Event Listener Implementation
 Communication is handled via `chrome.runtime.onMessage`:
 - **Trigger:** The Popup sends a `GET_DOM` message via `chrome.tabs.sendMessage`.
 - **Response:** The Content Script executes the scrape and returns the serialized JSON payload.

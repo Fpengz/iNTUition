@@ -22,15 +22,20 @@ This is the FastAPI-based backend for Aura, providing DOM distillation and AI-po
 
 ## 🛠️ Key Components
 
-- `app/api/`: API route definitions.
+- `app/agent/`: The **Aura Brain** — Multi-agent pipeline using PydanticAI.
+- `app/core/identity.py`: Persistent user profile and feedback storage (SQLite).
 - `app/core/distiller.py`: Logic for filtering and serializing DOM elements.
-- `app/core/explainer.py`: Integration with Gemini for page summarization and action mapping.
+- `app/core/explainer.py`: Integration with Gemini for page summarization.
 - `app/core/providers.py`: LLM provider configurations.
 
 ## 🧪 Verification
 
-Run the verification script to ensure the backend and AI connection are working correctly:
+Run the verification scripts to ensure the backend and AI connection are working correctly:
 
 ```bash
+# Verify basic backend functionality
 uv run python verify_backend.py
+
+# Verify the multi-agent accessibility runtime
+uv run python verify_runtime.py
 ```

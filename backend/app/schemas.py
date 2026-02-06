@@ -22,6 +22,8 @@ class DOMData(BaseModel):
     title: str
     url: HttpUrl
     elements: list[DOMElement]
+    main_selector: str = "main"
+    content_summary: str = ""
 
 
 class DistilledElement(BaseModel):

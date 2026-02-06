@@ -50,6 +50,8 @@ const DEFAULT_PROFILE: UserProfile = {
     modalities: { input_preferred: ['text'], output_preferred: ['visual'], auto_tts: false }
 };
 
+const API_BASE_URL = (import.meta.env.VITE_AURA_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
 function App() {
   const [cardData, setCardData] = useState<CardData>({ summary: '', actions: [] });
   const [domData, setDomData] = useState<any>(null);
@@ -66,7 +68,7 @@ function App() {
   const handleFeedback = async (helpful: boolean) => {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        await fetch('http://127.0.0.1:8000/feedback', {
+        await fetch(`${API_BASE_URL}/feedback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -87,13 +89,17 @@ function App() {
 
   // Load profile on mount
   useEffect(() => {
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.local.get('auraUserProfile', (result) => {
-            if (result.auraUserProfile) {
-                setUserProfile(result.auraUserProfile as UserProfile);
-            }
-        });
-    }
+    const loadProfile = () => {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.local.get('auraUserProfile', (result) => {
+                if (result.auraUserProfile) {
+                    console.log("Aura: Loaded profile from storage:", result.auraUserProfile);
+                    setUserProfile(result.auraUserProfile as UserProfile);
+                }
+            });
+        }
+    };
+    loadProfile();
   }, []);
 
   // Save profile on change
@@ -116,7 +122,7 @@ function App() {
 
       // Sync with backend
       try {
-          await fetch('http://127.0.0.1:8000/profile/save', {
+          await fetch(`${API_BASE_URL}/profile/save`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(newProfile),
@@ -170,10 +176,11 @@ function App() {
       const payload = { 
           dom_data: scrapedData, 
           profile: userProfile,
-          logs: ["User initiated proactive help"] // In a real app, this would be actual interaction logs
+          logs: ["User initiated proactive help"],
+          is_explicit: true
       };
       
-      const response = await fetch('http://127.0.0.1:8000/process', {
+      const response = await fetch(`${API_BASE_URL}/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -191,21 +198,44 @@ function App() {
       }
 
       const result = await response.json();
-      console.log("Runtime Result:", result);
+      console.log("Phased Runtime Result:", result);
 
-      if (result.action === "adapt" && result.ui_changes) {
+      if (result.action === "apply_ui" && result.ui_command) {
+          const { ui_command } = result;
           // Apply structural adaptations
           chrome.tabs.sendMessage(tab.id, { 
               action: "ADAPT_UI", 
-              adaptations: result.ui_changes 
+              adaptations: {
+                  hide_elements: ui_command.hide,
+                  highlight_elements: ui_command.highlight,
+                  layout_mode: ui_command.layout_mode,
+                  explanation: ui_command.explanation,
+                  risk_level: ui_command.risk_level,
+                  complexity: ui_command.complexity,
+                  apply_bionic: ui_command.apply_bionic
+              }
           });
 
           // Show the explanation to the user
           setCardData({
-              summary: result.ui_changes.explanation,
-              actions: result.page_summary?.main_actions || []
+              summary: ui_command.explanation,
+              actions: [] 
           });
           setShowFeedback(true);
+
+          // Phase 4: Automatic Modal Interactions (e.g., Auto-TTS)
+          if (userProfile.modalities.auto_tts) {
+              console.log("Aura: Auto-TTS triggered.");
+              handleTTS(ui_command.explanation);
+          }
+      } else if (result.action === "apply_ui" && result.ui_command === undefined && result.mode === "mock_fallback") {
+          // Handle mock fallback case specifically if needed, but the above usually covers it
+          // Just making sure the logic flow is solid
+      } else if (result.action === "suggest_help") {
+          setCardData({
+              summary: result.message || "Aura detected you might need help. Would you like to simplify the page?",
+              actions: ["Yes, please", "No thanks"]
+          });
       } else {
           setCardData({
               summary: result.message || "Aura analyzed the page and it looks accessible.",
@@ -272,7 +302,7 @@ function App() {
 
   const handleTTS = async (text: string) => {
     try {
-        const response = await fetch('http://127.0.0.1:8000/tts', {
+        const response = await fetch(`${API_BASE_URL}/tts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
@@ -291,7 +321,7 @@ function App() {
   const handleActionClick = async (action: string) => {
     if (!domData) return;
     try {
-        const response = await fetch('http://127.0.0.1:8000/action', {
+        const response = await fetch(`${API_BASE_URL}/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dom_data: domData, query: action })
@@ -431,9 +461,17 @@ function App() {
                 className="btn-primary"
                 onClick={() => handleExplain()} 
                 disabled={loading}
+                style={loading ? { animation: 'auraPulse 2s infinite' } : {}}
             >
-                {loading ? 'Thinking...' : 'Explain this Page'}
+                {loading ? 'Analyzing Interface...' : 'Explain this Page'}
             </button>
+
+            {loading && (
+                <div className="loading-indicator">
+                    <div className="aura-spinner"></div>
+                    <p style={{ fontWeight: 600 }}>Aura Brain is reasoning...</p>
+                </div>
+            )}
 
             {error && <div className="error-message" role="alert">{error}</div>}
             

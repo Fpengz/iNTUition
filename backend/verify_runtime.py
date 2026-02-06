@@ -7,19 +7,27 @@ async def verify_runtime():
     
     payload = {
         "dom_data": {
-            "title": "Test Page",
-            "url": "https://example.com",
+            "title": "CS231n Convolutional Neural Networks",
+            "url": "https://cs231n.github.io/convolutional-networks/",
             "elements": [
                 {"role": "button", "text": "Login", "selector": "#login", "aria_label": "Login to your account"},
-                {"role": "heading", "text": "Welcome", "selector": "h1"},
-                {"role": "link", "text": "Forgot Password?", "selector": ".forgot-pass"}
-            ]
+                {"role": "heading", "text": "Architectures", "selector": "h1"},
+                {"role": "link", "text": "Table of Contents", "selector": ".sidebar-nav"}
+            ],
+            "main_selector": "#content-area",
+            "content_summary": "Convolutional Neural Networks (CNNs) are very similar to ordinary Neural Networks..."
         },
         "profile": {
             "cognitive_needs": True,
             "language_level": "simple"
         },
-        "logs": ["user scrolled rapidly", "user hovered over login button for 5 seconds"]
+        "logs": [
+            "user scrolled rapidly", 
+            "user hovered over login button for 5 seconds",
+            "repeated scrolling loops",
+            "rage clicks detected"
+        ],
+        "is_explicit": True
     }
     
     print(f"Sending request to {url}...")

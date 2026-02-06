@@ -1,87 +1,122 @@
 import logging
-from typing import List, Optional
+import asyncio
+from typing import List, Optional, Dict
 
-from app.agent.agents.consolidated import aura_brain_agent
-from app.agent.models.consolidated import ConsolidatedResponse
+from app.agent.models.skeleton import PageSnapshot, AccessibilityAssessment, UIAdaptationDecision
+from app.agent.core.heuristics import should_run_ai
+from app.agent.core.bionic_helper import should_apply_bionic
+from app.agent.agents.phased import assessment_agent, adaptation_agent, judge_agent
 from app.schemas import UserProfile, DOMData
 
 logger = logging.getLogger(__name__)
 
 class AccessibilityRuntime:
-    """Consolidated orchestrator for the Aura Accessibility Pipeline."""
+    """Orchestrator for the Phased Multi-Agent Accessibility Runtime."""
 
     async def process_page(
         self, 
         dom_data: DOMData, 
         user_profile: UserProfile,
-        interaction_logs: Optional[List[str]] = None
+        interaction_logs: Optional[List[str]] = None,
+        is_explicit: bool = False
     ):
-        logger.info(f"Starting consolidated accessibility pipeline for: {dom_data.url}")
+        logger.info(f"Starting phased runtime for: {dom_data.url} (Explicit: {is_explicit})")
 
-        dom_summary = str(dom_data.model_dump())[:8000]
+        # Construct Snapshot with richer content context
+        snapshot = PageSnapshot(
+            url=str(dom_data.url),
+            dom_text=f"Title: {dom_data.title}\nContent Snippet: {getattr(dom_data, 'content_summary', '')}",
+            dom_structure=str([el.model_dump() for el in dom_data.elements])[:8000],
+            interaction_stats=self._parse_logs(interaction_logs)
+        )
         
-        prompt = f"""
-        Analyze this page and user profile.
-        
-        DOM Data: {dom_summary}
-        User Profile: {user_profile.model_dump_json()}
-        Interaction Logs: {interaction_logs if interaction_logs else 'None'}
-        
-        Provide a complete, consolidated accessibility analysis and adaptation plan.
-        """
-        
+        main_selector = getattr(dom_data, 'main_selector', 'main')
+
+        # 1. Phase 0: Heuristic Gate (only for background/proactive)
+        if not is_explicit and not should_run_ai(snapshot):
+            logger.info("Heuristic gate: Page is healthy or no struggle detected. Skipping AI.")
+            return {"action": "none", "reason": "heuristic_gate"}
+
         try:
-            result = await aura_brain_agent.run(prompt)
-            data: ConsolidatedResponse = result.data
+            # 2. Phase 1: Assessment
+            assessment_result = await assessment_agent.run(str(snapshot.model_dump()))
+            assessment: AccessibilityAssessment = assessment_result.data
+            logger.info(f"Assessment: Risk={assessment.risk_level} | Conf={assessment.confidence}")
+
+            if assessment.confidence < 0.5 or assessment.risk_level == "low":
+                return {"action": "suggest_help", "message": "Aura is standing by if you need help."}
+
+            # 3. Phase 2: Adaptation Decision
+            adaptation_input = f"Page: {snapshot.model_dump_json()}\nAssessment: {assessment.model_dump_json()}\nUser Profile: {user_profile.model_dump_json()}"
+            adaptation_result = await adaptation_agent.run(adaptation_input)
+            adaptation: UIAdaptationDecision = adaptation_result.data
+            logger.info(f"Adaptation: Mode={adaptation.layout_mode} | Conf={adaptation.confidence}")
+
+            if adaptation.confidence < 0.6:
+                return {"action": "suggest_help", "explanation": adaptation.explanation}
+
+            # 4. Phase 3: Validation (Judge)
+            judge_input = f"Before: {snapshot.dom_text}\nProposed: {adaptation.model_dump_json()}"
+            judge_result = await judge_agent.run(judge_input)
             
-            logger.info(f"Pipeline complete. Action: {'adapt' if data.risk.recommend_intervention else 'none'}")
-            
+            if not judge_result.data.success:
+                logger.warning(f"Judge rejected adaptation: {judge_result.data.errors}")
+                return {"action": "warn", "message": "Proposed adaptation failed safety check."}
+
+            # --- HARD SAFETY GATE: Never hide the main content ---
+            safe_hide = [s for s in adaptation.hide_elements if s.lower() != main_selector.lower()]
+
             return {
-                "action": "adapt" if data.risk.recommend_intervention else "none",
-                "ui_changes": data.proposed_actions,
-                "verdict": data.verdict,
-                "risk": data.risk,
-                "page_summary": data.page_summary,
-                "cognitive_state": data.cognitive_state,
-                "mode": "live"
+                "action": "apply_ui",
+                "ui_command": {
+                    "layout_mode": adaptation.layout_mode,
+                    "hide": safe_hide,
+                    "highlight": adaptation.highlight_elements,
+                    "explanation": adaptation.explanation,
+                    "risk_level": assessment.risk_level,
+                    "complexity": assessment.complexity_score,
+                    "apply_bionic": apply_bionic
+                },
+                "mode": "phased_agent"
             }
+
         except Exception as e:
-            logger.error(f"Error in consolidated pipeline, falling back to mock: {e}")
+            logger.error(f"Error in phased runtime: {e}")
+            # Intelligent fallback
             return self._get_mock_response(dom_data, user_profile)
 
+    def _parse_logs(self, logs: Optional[List[str]]) -> Dict[str, float]:
+        """Simple parser to turn string logs into heuristic stats."""
+        stats = {"idle_time": 0, "scroll_loops": 0, "rage_clicks": 0}
+        if not logs: return stats
+        
+        for log in logs:
+            if "scroll" in log.lower(): stats["scroll_loops"] += 1
+            if "click" in log.lower(): stats["rage_clicks"] += 1
+            if "long" in log.lower() or "idle" in log.lower(): stats["idle_time"] = 15
+            
+        return stats
+
     def _get_mock_response(self, dom_data: DOMData, user_profile: UserProfile):
-        """Returns a high-quality mock response for demo stability."""
+        """Standard mock for demo stability, now content-focused."""
         site_name = dom_data.title or "this website"
+        snippet = dom_data.content_summary[:150] + "..." if dom_data.content_summary else "no content preview available."
+        
+        if user_profile.language_level == "simple":
+            explanation = f"This page is about {site_name}. In short: {snippet} I've simplified the layout so you can focus on reading."
+        else:
+            explanation = f"Detailed Analysis of {site_name}: This page contains information regarding {snippet} To assist your navigation, I have identified primary actions and suppressed secondary navigational clutter."
+
         return {
-            "action": "adapt",
-            "ui_changes": {
-                "hide_elements": [el.selector for el in dom_data.elements if el.role in ["link", "nav"]][:3],
-                "highlight_elements": [el.selector for el in dom_data.elements if el.role == "button"][:1],
+            "action": "apply_ui",
+            "ui_command": {
+                "hide": [el.selector for el in dom_data.elements if el.role in ["link", "nav"]][:3],
+                "highlight": [el.selector for el in dom_data.elements if el.role == "button"][:1],
                 "layout_mode": "focus" if user_profile.cognitive_needs else "simplified",
-                "explanation": f"Aura is helping you navigate {site_name}. I've focused the view on the most important actions and simplified the interface to make it easier to reach your goals."
-            },
-            "verdict": {
-                "compliant": True,
-                "remaining_issues": [],
-                "regressions": [],
-                "confidence_score": 0.95
-            },
-            "risk": {
+                "explanation": explanation,
                 "risk_level": "medium",
-                "issues": ["High cognitive load detected"],
-                "recommend_intervention": True
-            },
-            "page_summary": {
-                "page_type": "webpage",
-                "primary_goal": "Information gathering",
-                "main_actions": ["Click primary button"],
-                "secondary_elements": ["Sidebar", "Footer"],
-                "complexity_score": 7
-            },
-            "cognitive_state": {
-                "overloaded": True,
-                "confidence": 0.8,
-                "signals": ["Long hesitation"]
+                "complexity": 7,
+                "apply_bionic": should_apply_bionic(user_profile)
             },
             "mode": "mock_fallback"
         }

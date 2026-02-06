@@ -304,19 +304,18 @@ AI reprioritizes content based on meaning
 
 Layout reflects task importance, not original design
 
-5. Execution Flow (End-to-End)
-risk = health_agent.run(dom_snapshot)
+5. Execution Flow (Consolidated Pipeline)
+To optimize for latency and API quota, Aura uses a **Consolidated Brain Agent** that processes the entire pipeline in a single structured request while maintaining the multi-agent reasoning logic:
 
-if risk.recommend_intervention:
-    page = page_agent.run(dom_snapshot)
-    constraints = profile_agent.run(user_profile)
-    cognitive = cognitive_agent.run(interactions, page, constraints)
-
-    if cognitive.overloaded or risk.risk_level == "high":
-        actions = ui_agent.run(page, constraints, cognitive)
-        apply_ui_changes(actions)
-
-        verdict = judge_agent.run(original_dom, modified_dom)
+1. **Observe:** Extension captures DOM snapshot and interaction logs.
+2. **Brain Execution:**
+   - `health_agent` identifies immediate risks.
+   - `understanding_agent` maps page intent.
+   - `profile_interpreter` applies user identity constraints.
+   - `decision_agent` selects UI actions (e.g., Target Upscaling or Focus Portal).
+   - `judge_agent` validates the plan for WCAG safety.
+3. **Act:** Extension applies surgical DOM changes or activates the Focus Portal.
+4. **Feedback:** User provides satisfaction data; system enables one-click reset.
 6. Key Differentiators
 Proactive accessibility intervention
 
