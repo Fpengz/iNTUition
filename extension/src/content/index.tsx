@@ -259,11 +259,13 @@ const initFloatingUI = () => {
         }
     `;
 
+    const [showSettings, setShowSettings] = React.useState(false);
+
     root.render(
       <React.StrictMode>
         <ShadowRoot css={[baseStyles]}>
-          <FloatingWindow title="Aura AI">
-            <FloatingApp />
+          <FloatingWindow title="Aura AI" setShowSettings={setShowSettings}>
+            <FloatingApp externalShowSettings={showSettings} onSettingsOpen={() => setShowSettings(false)} />
           </FloatingWindow>
         </ShadowRoot>
       </React.StrictMode>

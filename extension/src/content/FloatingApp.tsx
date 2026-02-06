@@ -53,7 +53,12 @@ const DEFAULT_PROFILE: UserProfile = {
 
 const API_BASE_URL = (import.meta.env.VITE_AURA_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
-const FloatingApp: React.FC = () => {
+interface FloatingAppProps {
+  externalShowSettings?: boolean;
+  onSettingsOpen?: () => void;
+}
+
+const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSettingsOpen }) => {
   const [cardData, setCardData] = useState<CardData>({ summary: '', actions: [] });
   const [processTime, setProcessTime] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -62,6 +67,14 @@ const FloatingApp: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  // Sync external showSettings
+  useEffect(() => {
+    if (externalShowSettings) {
+      setShowSettings(true);
+      if (onSettingsOpen) onSettingsOpen();
+    }
+  }, [externalShowSettings, onSettingsOpen]);
 
   // Load profile on mount
   useEffect(() => {
