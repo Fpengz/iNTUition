@@ -60,10 +60,35 @@ export const scrapePage = () => {
   };
 };
 
+// Add Aura specific styles for adaptations
+const style = document.createElement('style');
+style.id = 'aura-adaptation-styles';
+style.textContent = `
+  .aura-highlight-active {
+    outline: 5px solid #6366f1 !important;
+    outline-offset: 4px !important;
+    transition: outline 0.3s ease-in-out !important;
+    position: relative !important;
+    z-index: 10000 !important;
+  }
+  
+  .aura-focus-mode .aura-dimmed {
+    opacity: 0.1 !important;
+    pointer-events: none !important;
+    filter: blur(2px) !important;
+    transition: all 0.5s ease !important;
+  }
+
+  .aura-simplified-mode [data-aura-hidden="true"] {
+    display: none !important;
+  }
+`;
+document.head.appendChild(style);
+
 // Listen for messages from the Popup/Sidecar
 chrome.runtime.onMessage.addListener(
   (
-    request: { action: string; selector?: string },
+    request: { action: string; selector?: string; adaptations?: any },
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ) => {
@@ -83,11 +108,10 @@ chrome.runtime.onMessage.addListener(
         const el = document.querySelector(request.selector) as HTMLElement;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.style.outline = "5px solid #BD34FE";
-          el.style.outlineOffset = "5px";
+          el.classList.add("aura-highlight-active");
           setTimeout(() => {
-            el.style.outline = "";
-          }, 3000);
+            el.classList.remove("aura-highlight-active");
+          }, 5000);
           sendResponse({ success: true });
         } else {
           sendResponse({ error: "Element not found" });
@@ -95,6 +119,50 @@ chrome.runtime.onMessage.addListener(
       } catch (err) {
         sendResponse({ error: "Highlight failed", details: String(err) });
       }
+    } else if (request.action === "ADAPT_UI" && request.adaptations) {
+        console.log("Aura: Applying UI adaptations:", request.adaptations);
+        const { hide_elements, highlight_elements, layout_mode } = request.adaptations;
+
+        // Reset previous adaptations
+        document.querySelectorAll(".aura-highlight-active").forEach(el => el.classList.remove("aura-highlight-active"));
+        document.body.classList.remove("aura-focus-mode", "aura-simplified-mode");
+        document.querySelectorAll("[data-aura-hidden]").forEach(el => (el as HTMLElement).removeAttribute("data-aura-hidden"));
+        document.querySelectorAll(".aura-dimmed").forEach(el => el.classList.remove("aura-dimmed"));
+
+        // Apply hiding
+        hide_elements?.forEach((selector: string) => {
+            const el = document.querySelector(selector);
+            if (el) (el as HTMLElement).setAttribute("data-aura-hidden", "true");
+        });
+
+        // Apply highlighting
+        highlight_elements?.forEach((selector: string) => {
+            const el = document.querySelector(selector);
+            if (el) el.classList.add("aura-highlight-active");
+        });
+
+        // Apply layout modes
+        if (layout_mode === "focus") {
+            document.body.classList.add("aura-focus-mode");
+            // Dim everything except highlighted or essential elements
+            document.querySelectorAll("body > *:not(script):not(style)").forEach(el => {
+                const hasHighlight = el.querySelector(".aura-highlight-active") || el.classList.contains("aura-highlight-active");
+                if (!hasHighlight) {
+                    el.classList.add("aura-dimmed");
+                }
+            });
+        } else if (layout_mode === "simplified") {
+            document.body.classList.add("aura-simplified-mode");
+        }
+
+        sendResponse({ success: true, status: "adapted" });
+    } else if (request.action === "RESET_UI") {
+        console.log("Aura: Resetting UI adaptations...");
+        document.querySelectorAll(".aura-highlight-active").forEach(el => el.classList.remove("aura-highlight-active"));
+        document.body.classList.remove("aura-focus-mode", "aura-simplified-mode");
+        document.querySelectorAll("[data-aura-hidden]").forEach(el => (el as HTMLElement).removeAttribute("data-aura-hidden"));
+        document.querySelectorAll(".aura-dimmed").forEach(el => el.classList.remove("aura-dimmed"));
+        sendResponse({ success: true, status: "reset" });
     }
     return true;
   }

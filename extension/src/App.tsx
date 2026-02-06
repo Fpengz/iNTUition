@@ -7,10 +7,48 @@ interface CardData {
   actions: string[];
 }
 
-interface UserProfile {
-  cognitive_needs: boolean;
-  language_level: string;
+interface CognitiveProfile {
+  support_level: 'none' | 'low' | 'medium' | 'high';
+  simplify_language: boolean;
+  reduce_distractions: boolean;
+  memory_aids: boolean;
 }
+
+interface MotorProfile {
+  precision_required: 'normal' | 'limited' | 'severe';
+  click_assistance: boolean;
+  keyboard_only: boolean;
+  target_upscaling: boolean;
+}
+
+interface SensoryProfile {
+  vision_acuity: 'normal' | 'low' | 'blind';
+  color_blindness: string | null;
+  audio_sensitivity: boolean;
+  high_contrast: boolean;
+}
+
+interface ModalityPreferences {
+  input_preferred: ('text' | 'speech' | 'vision')[];
+  output_preferred: ('visual' | 'auditory' | 'haptic')[];
+  auto_tts: boolean;
+}
+
+interface UserProfile {
+  aura_id: string;
+  cognitive: CognitiveProfile;
+  motor: MotorProfile;
+  sensory: SensoryProfile;
+  modalities: ModalityPreferences;
+}
+
+const DEFAULT_PROFILE: UserProfile = {
+    aura_id: 'guest-' + Math.random().toString(36).substring(7),
+    cognitive: { support_level: 'none', simplify_language: true, reduce_distractions: true, memory_aids: false },
+    motor: { precision_required: 'normal', click_assistance: false, keyboard_only: false, target_upscaling: false },
+    sensory: { vision_acuity: 'normal', color_blindness: null, audio_sensitivity: false, high_contrast: false },
+    modalities: { input_preferred: ['text'], output_preferred: ['visual'], auto_tts: false }
+};
 
 function App() {
   const [cardData, setCardData] = useState<CardData>({ summary: '', actions: [] });
@@ -19,8 +57,33 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile>({ cognitive_needs: true, language_level: 'simple' });
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [proactivePrompt, setProactivePrompt] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // ... (rest of logic)
+
+  const handleFeedback = async (helpful: boolean) => {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        await fetch('http://127.0.0.1:8000/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                aura_id: userProfile.aura_id,
+                url: tab?.url || 'unknown',
+                helpful: helpful
+            })
+        });
+        setShowFeedback(false);
+        // Optional: Reset UI adaptations if the user says it wasn't helpful
+        if (!helpful && tab?.id) {
+            chrome.tabs.sendMessage(tab.id, { action: "RESET_UI" });
+        }
+    } catch (e) {
+        console.error("Failed to send feedback:", e);
+    }
+  };
 
   // Load profile on mount
   useEffect(() => {
@@ -34,11 +97,32 @@ function App() {
   }, []);
 
   // Save profile on change
-  const handleProfileChange = (key: keyof UserProfile, value: any) => {
-      const newProfile = { ...userProfile, [key]: value };
+  const handleProfileChange = async (category: keyof UserProfile, updates: any) => {
+      let newProfile: UserProfile;
+      if (typeof updates === 'object' && !Array.isArray(updates)) {
+          newProfile = { 
+              ...userProfile, 
+              [category]: { ...(userProfile[category] as any), ...updates } 
+          };
+      } else {
+          newProfile = { ...userProfile, [category]: updates };
+      }
+      
       setUserProfile(newProfile);
+      
       if (typeof chrome !== 'undefined' && chrome.storage) {
           chrome.storage.local.set({ auraUserProfile: newProfile });
+      }
+
+      // Sync with backend
+      try {
+          await fetch('http://127.0.0.1:8000/profile/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newProfile),
+          });
+      } catch (e) {
+          console.error("Failed to sync profile with backend:", e);
       }
   };
 
@@ -82,10 +166,14 @@ function App() {
       
       setDomData(scrapedData);
 
-      console.log("DOM data received, calling backend...");
-      const payload = { dom_data: scrapedData, profile: userProfile };
+      console.log("DOM data received, calling multi-agent runtime...");
+      const payload = { 
+          dom_data: scrapedData, 
+          profile: userProfile,
+          logs: ["User initiated proactive help"] // In a real app, this would be actual interaction logs
+      };
       
-      const response = await fetch('http://127.0.0.1:8000/explain/stream', {
+      const response = await fetch('http://127.0.0.1:8000/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -102,36 +190,30 @@ function App() {
         throw new Error(`Backend error (${response.status}): ${errorText.slice(0, 100)}`);
       }
 
-      if (!response.body) {
-        throw new Error("Response has no body.");
+      const result = await response.json();
+      console.log("Runtime Result:", result);
+
+      if (result.action === "adapt" && result.ui_changes) {
+          // Apply structural adaptations
+          chrome.tabs.sendMessage(tab.id, { 
+              action: "ADAPT_UI", 
+              adaptations: result.ui_changes 
+          });
+
+          // Show the explanation to the user
+          setCardData({
+              summary: result.ui_changes.explanation,
+              actions: result.page_summary?.main_actions || []
+          });
+          setShowFeedback(true);
+      } else {
+          setCardData({
+              summary: result.message || "Aura analyzed the page and it looks accessible.",
+              actions: []
+          });
       }
 
-      setLoading(false); // Stop loading once stream starts
-      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        // The stream sends data in the format "data: {...}\n\n"
-        // We need to parse this
-        const lines = value.split('\n\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.substring(6);
-            if (jsonStr) {
-              const data = JSON.parse(jsonStr);
-              if (data.type === 'summary') {
-                setCardData(prev => ({ ...prev, summary: prev.summary + data.content }));
-              } else if (data.type === 'action') {
-                setCardData(prev => ({ ...prev, actions: [...prev.actions, data.content] }));
-              } else if (data.type === 'error') {
-                throw new Error(data.content);
-              }
-            }
-          }
-        }
-      }
+      setLoading(false);
 
     } catch (err: any) {
       console.error("Aura Full Error:", err);
@@ -242,31 +324,97 @@ function App() {
       </header>
 
       {showSettings ? (
-          <section className="settings-panel" aria-labelledby="settings-title">
-              <h3 id="settings-title">Accessibility Profile</h3>
+          <section className="settings-panel" aria-labelledby="settings-title" style={{ padding: '1rem', overflowY: 'auto', maxHeight: '70vh' }}>
+              <h3 id="settings-title" style={{ color: 'var(--aura-primary)', marginTop: 0 }}>Accessibility Identity</h3>
+              <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '1.5rem' }}>ID: {userProfile.aura_id}</p>
               
-              <div className="setting-item">
-                  <label>
-                      <input 
-                        type="checkbox" 
-                        checked={userProfile.cognitive_needs} 
-                        onChange={(e) => handleProfileChange('cognitive_needs', e.target.checked)}
-                      />
-                      Reduce Cognitive Load
-                  </label>
-                  <span className="setting-description">Simplifies summaries and focuses on essential actions.</span>
+              <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>Cognitive & Language</h4>
+                  <div className="setting-item">
+                      <label htmlFor="support-level">Support Level:</label>
+                      <select 
+                        id="support-level"
+                        value={userProfile.cognitive.support_level}
+                        onChange={(e) => handleProfileChange('cognitive', { support_level: e.target.value })}
+                      >
+                          <option value="none">None</option>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                      </select>
+                  </div>
+                  <div className="setting-item">
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            checked={userProfile.cognitive.simplify_language}
+                            onChange={(e) => handleProfileChange('cognitive', { simplify_language: e.target.checked })}
+                        /> Simplify Language
+                    </label>
+                  </div>
               </div>
 
-              <div className="setting-item">
-                  <label htmlFor="lang-level">Language Level:</label>
-                  <select 
-                    id="lang-level"
-                    value={userProfile.language_level}
-                    onChange={(e) => handleProfileChange('language_level', e.target.value)}
-                  >
-                      <option value="simple">Simple</option>
-                      <option value="detailed">Detailed</option>
-                  </select>
+              <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>Motor & Interaction</h4>
+                  <div className="setting-item">
+                      <label htmlFor="precision">Precision:</label>
+                      <select 
+                        id="precision"
+                        value={userProfile.motor.precision_required}
+                        onChange={(e) => handleProfileChange('motor', { precision_required: e.target.value })}
+                      >
+                          <option value="normal">Normal</option>
+                          <option value="limited">Limited</option>
+                          <option value="severe">Severe</option>
+                      </select>
+                  </div>
+                  <div className="setting-item">
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            checked={userProfile.motor.target_upscaling}
+                            onChange={(e) => handleProfileChange('motor', { target_upscaling: e.target.checked })}
+                        /> Upscale Click Targets
+                    </label>
+                  </div>
+              </div>
+
+              <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>Sensory & Vision</h4>
+                  <div className="setting-item">
+                      <label htmlFor="vision">Vision Acuity:</label>
+                      <select 
+                        id="vision"
+                        value={userProfile.sensory.vision_acuity}
+                        onChange={(e) => handleProfileChange('sensory', { vision_acuity: e.target.value })}
+                      >
+                          <option value="normal">Normal</option>
+                          <option value="low">Low Acuity</option>
+                          <option value="blind">Blind</option>
+                      </select>
+                  </div>
+                  <div className="setting-item">
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            checked={userProfile.sensory.high_contrast}
+                            onChange={(e) => handleProfileChange('sensory', { high_contrast: e.target.checked })}
+                        /> High Contrast
+                    </label>
+                  </div>
+              </div>
+
+              <div className="settings-group" style={{ marginBottom: '1.5rem' }}>
+                  <h4 style={{ borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>Output Preferences</h4>
+                  <div className="setting-item">
+                    <label>
+                        <input 
+                            type="checkbox" 
+                            checked={userProfile.modalities.auto_tts}
+                            onChange={(e) => handleProfileChange('modalities', { auto_tts: e.target.checked })}
+                        /> Automatic Speech (TTS)
+                    </label>
+                  </div>
               </div>
           </section>
       ) : (
@@ -298,6 +446,23 @@ function App() {
                         onTTSClick={handleTTS}
                         onActionClick={handleActionClick}
                     />
+
+                    {showFeedback && (
+                        <div className="feedback-section" style={{ 
+                            marginTop: '1rem', 
+                            padding: '1rem', 
+                            background: '#f8f9fa', 
+                            borderRadius: '8px',
+                            border: '1px solid #eee',
+                            textAlign: 'center'
+                        }}>
+                            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', fontWeight: '600' }}>Was this adaptation helpful?</p>
+                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                <button className="btn-secondary" onClick={() => handleFeedback(true)} style={{ padding: '0.4rem 1rem' }}>Yes</button>
+                                <button className="btn-secondary" onClick={() => handleFeedback(false)} style={{ padding: '0.4rem 1rem' }}>No</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </>

@@ -1,6 +1,6 @@
 """Pydantic schemas for data exchange within the Aura backend."""
 
-from typing import Any
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, HttpUrl, Field
 
@@ -47,12 +47,45 @@ class DistilledData(BaseModel):
 
 # --- User Profile ---
 
+class CognitiveProfile(BaseModel):
+    support_level: Literal["none", "low", "medium", "high"] = "none"
+    simplify_language: bool = True
+    reduce_distractions: bool = True
+    memory_aids: bool = False
+
+class MotorProfile(BaseModel):
+    precision_required: Literal["normal", "limited", "severe"] = "normal"
+    click_assistance: bool = False
+    keyboard_only: bool = False
+    target_upscaling: bool = False
+
+class SensoryProfile(BaseModel):
+    vision_acuity: Literal["normal", "low", "blind"] = "normal"
+    color_blindness: Optional[str] = None
+    audio_sensitivity: bool = False
+    high_contrast: bool = False
+
+class ModalityPreferences(BaseModel):
+    input_preferred: List[Literal["text", "speech", "vision"]] = ["text"]
+    output_preferred: List[Literal["visual", "auditory", "haptic"]] = ["visual"]
+    auto_tts: bool = False
+
 class UserProfile(BaseModel):
-    """Represents the user's accessibility profile."""
-    # This can be expanded based on specific needs (e.g., visual_impairment: bool, cognitive_load_tolerance: str)
-    cognitive_needs: bool = True
-    language_level: str = "simple"
-    # Add other relevant profile attributes as needed
+    """Represents the user's persistent accessibility identity."""
+    aura_id: str = Field(default="guest-user", description="Unique ID for persistent profile storage")
+    cognitive: CognitiveProfile = Field(default_factory=CognitiveProfile)
+    motor: MotorProfile = Field(default_factory=MotorProfile)
+    sensory: SensoryProfile = Field(default_factory=SensoryProfile)
+    modalities: ModalityPreferences = Field(default_factory=ModalityPreferences)
+    
+    # Simple compatibility layer for existing code
+    @property
+    def cognitive_needs(self) -> bool:
+        return self.cognitive.support_level != "none"
+    
+    @property
+    def language_level(self) -> str:
+        return "simple" if self.cognitive.simplify_language else "detailed"
 
 
 # --- LLM Explanation & Action ---
@@ -73,6 +106,16 @@ class ActionResponse(BaseModel):
     """Mapped action from LLM to a specific DOM element."""
     selector: str
     explanation: str | None = None
+
+
+# --- Feedback ---
+
+class FeedbackRequest(BaseModel):
+    aura_id: str
+    url: str
+    adaptation_id: str | None = None
+    helpful: bool
+    comment: str | None = None
 
 
 # --- TTS Request ---

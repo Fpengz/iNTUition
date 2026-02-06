@@ -1,0 +1,348 @@
+# AI Accessibility Runtime — Agent Architecture & UI Adaptation Design
+
+This document describes the **agent-based architecture**, **decision flow**, and **UI adaptation strategies** for an AI-powered accessibility runtime.  
+The system is proactive, explainable, and demo-ready, designed to run with **local LLMs** and structured via **PydanticAI-style agents**.
+
+---
+
+## 1. System Overview
+
+**Goal**  
+Build a real-time accessibility layer that:
+- Understands any webpage semantically
+- Personalizes behavior using an accessibility profile
+- Detects cognitive overload and accessibility risks proactively
+- Adapts the UI structurally (not just visually)
+- Verifies that adaptations actually improve accessibility
+
+**Key Principles**
+- AI proposes actions, UI executes them
+- All AI outputs are structured and explainable
+- Adaptations are reversible and auditable
+- No passive waiting for user failure — proactive help
+
+---
+
+## 2. High-Level Agent Pipeline
+
+┌────────────────────────┐
+│ Accessibility Health │ (Proactive scan)
+│ Check Agent │
+└───────────┬────────────┘
+↓
+┌────────────────────────┐
+│ Page Understanding │
+│ Agent │
+└───────────┬────────────┘
+↓
+┌────────────────────────┐
+│ User Profile │
+│ Interpreter Agent │
+└───────────┬────────────┘
+↓
+┌────────────────────────┐
+│ Cognitive Load │
+│ Evaluator Agent │
+└───────────┬────────────┘
+↓
+┌────────────────────────┐
+│ UI Adaptation │
+│ Decision Agent │
+└───────────┬────────────┘
+↓
+┌────────────────────────┐
+│ Accessibility Judge │
+│ Agent │ (Validation & QA)
+└────────────────────────┘
+
+
+---
+
+## 3. Agent Specifications
+
+### 3.1 Accessibility Health Check Agent (Proactive Trigger)
+
+**Purpose**  
+Detect whether a webpage poses accessibility risks *before* the user struggles.
+
+**Inputs**
+- DOM snapshot
+- ARIA roles
+- Font sizes
+- Contrast ratios
+- Click target sizes
+- Layout density indicators
+
+**Outputs**
+```python
+class AccessibilityRisk(BaseModel):
+    risk_level: Literal["low", "medium", "high"]
+    issues: list[str]
+    recommend_intervention: bool
+Examples of Issues
+
+Missing labels on inputs
+
+Poor color contrast
+
+Dense layout with many interactive elements
+
+Small or tightly packed click targets
+
+Why It Matters
+
+Shifts accessibility from reactive to proactive
+
+Creates a clear AI justification early in the pipeline
+
+3.2 Page Understanding Agent (LLM Explainer)
+Purpose
+Generate a semantic, task-oriented understanding of the current webpage.
+
+Inputs
+
+Cleaned DOM structure
+
+Visible text
+
+Element roles and hierarchy
+
+Outputs
+
+class PageSummary(BaseModel):
+    page_type: str                  # form, article, dashboard, ecommerce, etc.
+    primary_goal: str               # what the user is likely trying to do
+    main_actions: list[str]         # key actions
+    secondary_elements: list[str]   # non-essential UI elements
+    complexity_score: int           # 1–10
+Usage
+
+Drives explanation generation
+
+Feeds into cognitive load detection
+
+Informs UI prioritization
+
+3.3 User Profile Interpreter Agent
+Purpose
+Translate a human-friendly accessibility profile into concrete UI constraints.
+
+Inputs
+
+class UserProfile(BaseModel):
+    vision: str                     # normal, low, color-blind
+    cognitive_support: str          # low, medium, high
+    motor_precision: str            # normal, limited
+    preferences: dict
+Outputs
+
+class AccessibilityConstraints(BaseModel):
+    max_elements_visible: int
+    simplify_text_level: int         # 0–3
+    enable_speech: bool
+    emphasize_primary_action: bool
+Why It Matters
+
+Makes personalization actionable
+
+Separates preference storage from AI reasoning
+
+3.4 Cognitive Load Evaluator Agent
+Purpose
+Determine whether the user is currently experiencing cognitive overload.
+
+Inputs
+
+Interaction logs (scroll loops, hover duration, repeated clicks)
+
+Page complexity score
+
+Accessibility constraints
+
+Outputs
+
+class CognitiveState(BaseModel):
+    overloaded: bool
+    confidence: float               # 0–1
+    signals: list[str]
+Example Signals
+
+Repeated up/down scrolling
+
+Long hesitation without action
+
+Clicking the same element multiple times
+
+3.5 UI Adaptation Decision Agent
+Purpose
+Decide how the interface should adapt to reduce friction and overload.
+
+Inputs
+
+PageSummary
+
+AccessibilityConstraints
+
+CognitiveState
+
+Outputs
+
+class UIActions(BaseModel):
+    hide_elements: list[str]         # semantic IDs or roles
+    highlight_elements: list[str]
+    layout_mode: Literal["normal", "simplified", "focus"]
+    explanation: str
+Important Design Choice
+
+AI proposes actions
+
+UI layer applies changes using CSS / DOM transforms
+
+All actions are reversible
+
+3.6 Accessibility Judge Agent (Validation & QA)
+Purpose
+Verify that UI adaptations actually improve accessibility and do not introduce regressions.
+
+Inputs
+
+Original DOM
+
+Modified DOM
+
+User profile
+
+Heuristic accessibility rules (WCAG-inspired)
+
+Outputs
+
+class AccessibilityVerdict(BaseModel):
+    compliant: bool
+    remaining_issues: list[str]
+    regressions: list[str]
+    confidence_score: float
+Why This Is Powerful
+
+Adds accountability to AI-driven changes
+
+Demonstrates engineering rigor to judges
+
+Enables automated rollback if regressions are detected
+
+4. UI Adaptation Strategy
+4.1 What UI Adaptation Means Here
+UI adaptation is structural transformation, not cosmetic theming.
+
+Instead of only:
+
+Increasing font size
+
+Changing colors
+
+The system:
+
+Reorders content by importance
+
+Collapses or hides secondary elements
+
+Emphasizes primary actions
+
+Switches layout modes dynamically
+
+4.2 Example: E-Commerce Page Transformation
+Original View
+
+[Promo Banner]
+[Image Gallery]  [Price | Small Add to Cart]
+[Long Description]
+[Reviews]
+[Related Products]
+Adapted View (High Cognitive Load + Low Vision)
+
+[Accessibility Help Active]
+[LARGE Product Image]
+[LARGE PRIMARY CTA: Add to Cart]
+[Short, Simplified Description]
+[Reviews — collapsed]
+[Related Products — hidden]
+Benefits
+
+Reduced visual noise
+
+Clear task focus
+
+Larger interaction targets
+
+Lower cognitive demand
+
+4.3 Trending UI Adaptation Patterns
+1. Adaptive Cards
+
+Content grouped into cards
+
+Cards can expand, collapse, reorder
+
+Ideal for progressive disclosure
+
+2. Focus Mode
+
+Only essential UI is shown
+
+Secondary content is dimmed or hidden
+
+Especially effective for cognitive accessibility
+
+3. Progressive Disclosure
+
+Show only what’s needed now
+
+Reveal more on demand (click or voice)
+
+4. Semantic Reflow
+
+AI reprioritizes content based on meaning
+
+Layout reflects task importance, not original design
+
+5. Execution Flow (End-to-End)
+risk = health_agent.run(dom_snapshot)
+
+if risk.recommend_intervention:
+    page = page_agent.run(dom_snapshot)
+    constraints = profile_agent.run(user_profile)
+    cognitive = cognitive_agent.run(interactions, page, constraints)
+
+    if cognitive.overloaded or risk.risk_level == "high":
+        actions = ui_agent.run(page, constraints, cognitive)
+        apply_ui_changes(actions)
+
+        verdict = judge_agent.run(original_dom, modified_dom)
+6. Key Differentiators
+Proactive accessibility intervention
+
+Structured, explainable AI decisions
+
+Semantic UI restructuring (not just styling)
+
+Built-in validation and regression detection
+
+Works with local LLMs (no API dependency)
+
+7. Summary
+This agent-based architecture transforms accessibility from:
+
+static settings and passive tools
+into
+a live, intelligent, adaptive runtime.
+
+The result is a system that:
+
+Understands users
+
+Understands interfaces
+
+Acts responsibly
+
+Verifies its own impact
+
+This is accessibility as infrastructure, not a feature.

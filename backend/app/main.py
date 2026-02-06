@@ -156,16 +156,61 @@ async def prefetch(
 
 
 from app.agent.core.agent import AuraAgent
+from app.agent.core.runtime import AccessibilityRuntime
 from app.agent.tools.distiller_tool import DistillerTool
 from app.agent.tools.explainer_tool import ExplainerTool
 from app.agent.tools.tts_tool import TTSTool
 
-# Initialize Agent with tools
+# Initialize Agentic Components
 agent = AuraAgent([
     DistillerTool(),
     ExplainerTool(),
     TTSTool()
 ])
+
+runtime = AccessibilityRuntime()
+
+
+@app.post("/process")
+async def process_runtime(
+        request: Request,
+) -> dict[str, Any]:
+    """Multi-agent runtime endpoint for proactive accessibility adaptation."""
+    try:
+        body = await request.json()
+        raw_dom = body.get("dom_data")
+        raw_profile = body.get("profile")
+        logs = body.get("logs", [])
+
+        if not raw_dom or not raw_profile:
+            return Response(
+                content=json.dumps({"error": "Missing dom_data or profile"}),
+                status_code=422,
+                media_type="application/json",
+            )
+
+        dom_data = DOMData(**raw_dom)
+        user_profile = UserProfile(**raw_profile)
+
+        # Execute the multi-agent pipeline
+        start_time = time.perf_counter()
+        result = await runtime.process_page(
+            dom_data=dom_data,
+            user_profile=user_profile,
+            interaction_logs=logs
+        )
+        duration = time.perf_counter() - start_time
+        
+        logger.info(f"Performance: Profile={user_profile.aura_id} | Latency={duration:.4f}s | Mode={result.get('mode')}")
+
+        return result
+    except Exception as e:
+        logger.exception(f"Error in /process runtime: {e}")
+        return Response(
+            content=json.dumps({"error": str(e)}),
+            status_code=500,
+            media_type="application/json",
+        )
 
 
 @app.post("/chat")
@@ -429,6 +474,29 @@ async def text_to_speech(
             media_type="application/json",
         )
 
+
+from app.core.identity import save_profile, load_profile, save_feedback
+
+@app.post("/feedback")
+async def receive_feedback(feedback: FeedbackRequest):
+    """Receives user feedback on an adaptation."""
+    save_feedback(feedback.aura_id, feedback.url, feedback.helpful, feedback.comment)
+    return {"status": "received"}
+
+
+@app.post("/profile/save")
+async def save_user_profile(profile: UserProfile):
+    """Saves a persistent user profile to the identity store."""
+    save_profile(profile)
+    return {"status": "success", "aura_id": profile.aura_id}
+
+@app.get("/profile/{aura_id}")
+async def get_user_profile(aura_id: str):
+    """Fetches a persistent user profile."""
+    profile = load_profile(aura_id)
+    if not profile:
+        return Response(status_code=404, content=json.dumps({"error": "Profile not found"}))
+    return profile
 
 @app.get("/health")
 async def health() -> dict[str, str]:
