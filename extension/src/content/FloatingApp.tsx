@@ -225,26 +225,26 @@ const FloatingApp: React.FC = () => {
   };
 
   return (
-    <div className="aura-container" style={{ height: 'auto', padding: '1rem', background: 'transparent' }}>
-      <header className="aura-header" style={{ marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#6366f1' }}>Aura Assistant</h2>
+    <div className="aura-container" style={{ height: 'auto', padding: '0.75rem', background: 'transparent' }}>
+      <header className="aura-header" style={{ marginBottom: '0.75rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#6366f1' }}>Aura Assistant</h2>
         <button 
             className="btn-secondary"
             onClick={() => setShowSettings(!showSettings)}
-            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+            style={{ padding: '3px 6px', fontSize: '0.7rem' }}
         >
             {showSettings ? 'Back' : 'Settings'}
         </button>
       </header>
 
       {showSettings ? (
-          <div className="settings-panel" style={{ padding: '0.5rem', fontSize: '0.9rem' }}>
-              <div className="setting-item">
+          <div className="settings-panel" style={{ padding: '0.4rem', fontSize: '0.8rem' }}>
+              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
                   <label>Support Level:</label>
                   <select 
                     value={userProfile.cognitive.support_level}
                     onChange={(e) => handleProfileChange('cognitive', { support_level: e.target.value })}
-                    style={{ fontSize: '0.8rem', padding: '4px' }}
+                    style={{ fontSize: '0.75rem', padding: '2px' }}
                   >
                       <option value="none">None</option>
                       <option value="low">Low</option>
@@ -252,7 +252,7 @@ const FloatingApp: React.FC = () => {
                       <option value="high">High</option>
                   </select>
               </div>
-              <div className="setting-item">
+              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
                 <label>
                     <input 
                         type="checkbox" 
@@ -261,7 +261,7 @@ const FloatingApp: React.FC = () => {
                     /> Simplify Language
                 </label>
               </div>
-              <div className="setting-item">
+              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
                 <label>
                     <input 
                         type="checkbox" 
@@ -278,18 +278,19 @@ const FloatingApp: React.FC = () => {
                 onClick={() => handleExplain()} 
                 disabled={loading}
                 style={{ 
-                    padding: '12px', 
-                    fontSize: '1rem',
+                    padding: '8px', 
+                    fontSize: '0.9rem',
+                    borderRadius: '8px',
                     animation: loading ? 'auraPulse 2s infinite' : 'none'
                 }}
             >
                 {loading ? 'Analyzing...' : 'Explain Page'}
             </button>
 
-            {error && <div className="error-message" style={{ fontSize: '0.8rem', padding: '8px' }}>{error}</div>}
+            {error && <div className="error-message" style={{ fontSize: '0.7rem', padding: '6px', marginTop: '0.5rem' }}>{error}</div>}
             
             {cardData.summary && (
-                <div style={{ marginTop: '1rem' }}>
+                <div style={{ marginTop: '0.75rem' }}>
                     <AuraCardDisplay 
                         summary={cardData.summary}
                         actions={cardData.actions}

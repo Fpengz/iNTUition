@@ -12,8 +12,8 @@ interface FloatingWindowProps {
 const FloatingWindow: React.FC<FloatingWindowProps> = ({
   children,
   title = "Aura",
-  defaultPosition = { x: window.innerWidth - 400, y: 50 },
-  defaultSize = { width: 350, height: 500 },
+  defaultPosition = { x: window.innerWidth - 300, y: 40 },
+  defaultSize = { width: 260, height: 320 },
   onClose,
   storageKey = 'aura-floating-window-state'
 }) => {
@@ -25,6 +25,7 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
 
   const windowRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
   // Load state from storage
@@ -38,12 +39,12 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
           const validX = Math.max(0, Math.min(x, window.innerWidth - 50));
           const validY = Math.max(0, Math.min(y, window.innerHeight - 50));
           setPosition({ x: validX, y: validY });
-          setSize({ width, height });
+          setSize({ width: width || defaultSize.width, height: height || defaultSize.height });
           setIsMinimized(!!minimized);
         }
       });
     }
-  }, [storageKey]);
+  }, [storageKey, defaultSize.width, defaultSize.height]);
 
   // Save state to storage
   const saveState = useCallback((updates: any) => {
@@ -60,6 +61,7 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.aura-drag-handle')) {
       setIsDragging(true);
+      dragStartPos.current = { x: e.clientX, y: e.clientY };
       dragOffset.current = {
         x: e.clientX - position.x,
         y: e.clientY - position.y
@@ -90,8 +92,8 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
       } else if (isResizing) {
         const deltaX = e.clientX - resizeStart.current.x;
         const deltaY = e.clientY - resizeStart.current.y;
-        const newWidth = Math.max(250, Math.min(resizeStart.current.width + deltaX, window.innerWidth - position.x));
-        const newHeight = Math.max(100, Math.min(resizeStart.current.height + deltaY, window.innerHeight - position.y));
+        const newWidth = Math.max(280, Math.min(resizeStart.current.width + deltaX, window.innerWidth - position.x));
+        const newHeight = Math.max(150, Math.min(resizeStart.current.height + deltaY, window.innerHeight - position.y));
         setSize({ width: newWidth, height: newHeight });
       }
     };
@@ -118,10 +120,18 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
     };
   }, [isDragging, isResizing, position, size, saveState]);
 
-  const toggleMinimize = () => {
-    const nextMinimized = !isMinimized;
-    setIsMinimized(nextMinimized);
-    saveState({ minimized: nextMinimized });
+  const handleToggleClick = (e: React.MouseEvent) => {
+      // If we dragged more than 5 pixels, don't toggle
+      const dragDist = Math.sqrt(
+          Math.pow(e.clientX - dragStartPos.current.x, 2) + 
+          Math.pow(e.clientY - dragStartPos.current.y, 2)
+      );
+      
+      if (dragDist < 5) {
+          const nextMinimized = !isMinimized;
+          setIsMinimized(nextMinimized);
+          saveState({ minimized: nextMinimized });
+      }
   };
 
   const containerStyle: React.CSSProperties = {
@@ -133,13 +143,15 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
     zIndex: 2147483647,
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: 'var(--aura-bg, white)',
-    borderRadius: '16px',
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    borderRadius: isMinimized ? '50%' : '12px',
+    boxShadow: '0 12px 40px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
     overflow: 'hidden',
-    transition: isDragging || isResizing ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: isDragging || isResizing ? 'none' : 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1)',
     fontFamily: 'system-ui, -apple-system, sans-serif',
-    border: '1px solid rgba(99, 102, 241, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
     maxHeight: 'calc(100vh - 40px)',
     maxWidth: 'calc(100vw - 40px)',
   };
@@ -147,12 +159,34 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
   if (isMinimized) {
       return (
           <div 
-            style={{...containerStyle, width: '60px', height: '60px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'}}
-            onClick={toggleMinimize}
+            style={{
+                ...containerStyle, 
+                width: '52px', 
+                height: '52px', 
+                cursor: isDragging ? 'grabbing' : 'grab', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                padding: 0
+            }}
+            onClick={handleToggleClick}
             className="aura-drag-handle"
             onMouseDown={handleMouseDown}
           >
-              <div style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '18px' }}>
+              <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+                  borderRadius: '50%', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: 'white', 
+                  fontWeight: 'bold', 
+                  fontSize: '18px',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                  transition: 'transform 0.2s ease'
+              }}>
                 A
               </div>
           </div>
@@ -169,9 +203,9 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
       <div 
         className="aura-drag-handle"
         style={{
-          padding: '12px 16px',
-          background: 'linear-gradient(90deg, #f8fafc 0%, #ffffff 100%)',
-          borderBottom: '1px solid rgba(99, 102, 241, 0.1)',
+          padding: '8px 12px',
+          background: 'rgba(248, 250, 252, 0.5)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
           cursor: isDragging ? 'grabbing' : 'grab',
           display: 'flex',
           justifyContent: 'space-between',
@@ -180,29 +214,29 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
           flexShrink: 0
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '24px', height: '24px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '18px', height: '18px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>
                 A
             </div>
-            <span style={{ fontWeight: 800, fontSize: '1rem', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
                 {title}
             </span>
         </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '2px' }}>
             <button 
-                onClick={(e) => { e.stopPropagation(); toggleMinimize(); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: '#64748b' }}
+                onClick={(e) => { e.stopPropagation(); setIsMinimized(true); saveState({ minimized: true }); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px', borderRadius: '4px', color: '#94a3b8' }}
                 title="Minimize"
             >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             </button>
             {onClose && (
                 <button 
                     onClick={(e) => { e.stopPropagation(); onClose(); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: '#64748b' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px', borderRadius: '4px', color: '#94a3b8' }}
                     title="Close"
                 >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
             )}
         </div>
@@ -220,16 +254,17 @@ const FloatingWindow: React.FC<FloatingWindowProps> = ({
           position: 'absolute',
           right: 0,
           bottom: 0,
-          width: '16px',
-          height: '16px',
+          width: '12px',
+          height: '12px',
           cursor: 'nwse-resize',
           display: 'flex',
           alignItems: 'flex-end',
           justifyContent: 'flex-end',
-          padding: '2px'
+          padding: '1px',
+          opacity: 0.5
         }}
       >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="12" x2="12" y2="22"></line>
             <line x1="22" y1="2" x2="2" y2="22"></line>
         </svg>
