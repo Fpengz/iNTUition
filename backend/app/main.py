@@ -2,15 +2,12 @@
 
 import os
 import logging
-from dotenv import load_dotenv
-
-# MUST be called before importing app modules that initialize models
-load_dotenv()
+from app.core.config import settings
 
 # Compatibility mapping: PydanticAI often expects GOOGLE_API_KEY 
 # but our config uses GEMINI_API_KEY
-if os.getenv("GEMINI_API_KEY") and not os.getenv("GOOGLE_API_KEY"):
-    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+if settings.GEMINI_API_KEY and not os.getenv("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

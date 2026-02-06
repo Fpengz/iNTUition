@@ -5,11 +5,12 @@ interface AuraCardDisplayProps {
   summary: string;
   actions: string[];
   processTime?: string;
+  isStreaming?: boolean;
   onTTSClick: (text: string) => void;
   onActionClick: (action: string) => void;
 }
 
-const AuraCardDisplay: React.FC<AuraCardDisplayProps> = ({ summary, actions, processTime, onTTSClick, onActionClick }) => {
+const AuraCardDisplay: React.FC<AuraCardDisplayProps> = ({ summary, actions, processTime, isStreaming, onTTSClick, onActionClick }) => {
   return (
     <article className="aura-card" style={{
         background: '#fff',
@@ -22,7 +23,10 @@ const AuraCardDisplay: React.FC<AuraCardDisplayProps> = ({ summary, actions, pro
         lineHeight: '1.5'
     }}>
       <h3 style={{ marginTop: '0', marginBottom: '0.5rem', fontSize: '1rem', color: '#6366f1', fontWeight: 800 }}>Page Insight</h3>
-      <p style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#334155' }}>{summary}</p>
+      <p style={{ marginBottom: '1rem', fontSize: '0.85rem', color: '#334155' }}>
+        {summary}
+        {isStreaming && <span className="typing-indicator" style={{ color: '#6366f1', marginLeft: '2px', animation: 'blink 1s infinite' }}>|</span>}
+      </p>
       
       {actions && actions.length > 0 && (
         <nav aria-label="Suggested actions">

@@ -11,7 +11,7 @@ assessment_agent = Agent(
     get_model(), 
     output_type=AccessibilityAssessment,
     retries=3,
-    system_prompt=(
+    instructions=(
         "You are an information distillation agent for Aura. "
         "Analyze the webpage snapshot. Your primary goal is to summarize WHAT "
         "the page is about so the user doesn't have to read everything. "
@@ -25,7 +25,7 @@ adaptation_agent = Agent(
     get_model(),
     output_type=UIAdaptationDecision,
     retries=3,
-    system_prompt=(
+    instructions=(
         "You are the UI Adaptation Agent for Aura. "
         "Your goal is to provide a content-first explanation and a simplified UI. "
         "IMPORTANT RULES: "
@@ -46,7 +46,7 @@ judge_agent = Agent(
     get_model(),
     output_type=JudgeResult,
     retries=3,
-    system_prompt=(
+    instructions=(
         "You are the Accessibility Judge for Aura. "
         "Evaluate whether proposed accessibility improvements were correctly planned. "
         "Check for potential regressions or safety issues. "

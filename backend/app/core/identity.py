@@ -3,9 +3,11 @@ import json
 import logging
 from app.schemas import UserProfile
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
-DB_PATH = "aura_identity.db"
+DB_PATH = settings.DATABASE_PATH
 
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:

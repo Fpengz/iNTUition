@@ -57,6 +57,7 @@ function App() {
   const [domData, setDomData] = useState<any>(null);
   const [processTime, setProcessTime] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
@@ -75,6 +76,69 @@ function App() {
         });
     }
   }, []);
+
+  const handleStreamExplain = useCallback(async (scrapedData: any) => {
+    setIsStreaming(true);
+    setCardData({ summary: '', actions: [] });
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/explain/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dom_data: scrapedData, profile: userProfile }),
+      });
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.replace('data: ', '');
+              const chunk = JSON.parse(jsonStr);
+              
+              if (chunk.type === 'summary') {
+                setCardData(prev => ({
+                  ...prev,
+                  summary: prev.summary + chunk.content
+                }));
+              } else if (chunk.type === 'action') {
+                setCardData(prev => {
+                    if (prev.actions.length === 0) return { ...prev, actions: [chunk.content] };
+                    const newActions = [...prev.actions];
+                    if (chunk.content.startsWith(', ') || chunk.content.startsWith(' ')) {
+                        newActions[newActions.length - 1] += chunk.content;
+                    } else {
+                        newActions.push(chunk.content);
+                    }
+                    return { ...prev, actions: newActions };
+                });
+              } else if (chunk.type === 'error') {
+                setError(chunk.content);
+              }
+            } catch (e) {
+              console.error("Error parsing stream chunk:", e);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(`Streaming failed: ${err.message}`);
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [userProfile]);
 
   const handleFeedback = async (helpful: boolean) => {
     try {
@@ -183,6 +247,9 @@ function App() {
       
       setDomData(scrapedData);
 
+      // Start streaming explanation immediately
+      handleStreamExplain(scrapedData);
+
       console.log("DOM data received, calling multi-agent runtime...");
       const payload = { 
           dom_data: scrapedData, 
@@ -261,7 +328,7 @@ function App() {
       setError(err.message || "An unknown error occurred.");
       setLoading(false);
     }
-  }, [userProfile]);
+  }, [userProfile, handleStreamExplain]);
 
   const handleExplainRef = useRef(handleExplain);
   useEffect(() => {
@@ -486,12 +553,13 @@ function App() {
 
             {error && <div className="error-message" role="alert">{error}</div>}
             
-            {!loading && cardData.summary && (
+            {(loading || cardData.summary || isStreaming) && cardData.summary && (
                 <div className="explanation-box" style={{ marginTop: '1rem' }}>
                     <AuraCardDisplay 
                         summary={cardData.summary}
                         actions={cardData.actions}
                         processTime={processTime}
+                        isStreaming={isStreaming}
                         onTTSClick={handleTTS}
                         onActionClick={handleActionClick}
                     />

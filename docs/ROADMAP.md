@@ -51,6 +51,20 @@ This roadmap outlines the path for evolving Aura into a world-class AI accessibi
 - [x] **Intelligent Mock Fallback:**
     - Implemented high-quality mock responses to ensure demo stability during API throttling.
 
+## 🟣 Phase 5: Advanced Tooling & Self-Verification (The "Aura Hand") (Planned)
+*Objective: Empower the agent to safely manipulate the environment and verify its own actions.*
+
+- [ ] **Tool Execution Layer:**
+    - Implement a safe registry of accessibility tools (e.g., `IncreaseFontSize`, `EnableDarkMode`, `SimplifyLayout`).
+    - Enable the LLM to call tools with structured parameters instead of executing raw code.
+    - Build a "Tool Router" in the extension runtime to execute agent commands safely.
+- [ ] **Vision Judge Agent (Closed-Loop AI):**
+    - Implement a self-correcting feedback loop: Detect -> Change -> Observe (Screenshot) -> Evaluate.
+    - Use a multimodal model (e.g., LLaVA, GPT-4o-Vision) to verify accessibility improvements visually.
+    - Enable automatic rollback if the "Judge" detects broken UI or reduced usability.
+- [ ] **Visual Diffing:**
+    - Capture "Before" and "After" snapshots to allow the agent to reason about the impact of its changes.
+
 ---
 
 ## 🏆 Judging Criteria Alignment

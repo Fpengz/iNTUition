@@ -3,60 +3,36 @@
 > [!TIP]
 > For a detailed long-term strategic plan, see **[ROADMAP.md](./ROADMAP.md)**.
 
-## ✅ Phase 1: Performance & Core Features (Completed)
-*Goal: Optimize the core explanation engine for speed and efficiency.*
+## ✅ Phase 1: Core Performance (Completed)
+- [x] **Latency Audit:** Implemented `X-Process-Time` tracing.
+- [x] **DOM Optimization:** Viewport-aware scraping and token compression.
+- [x] **Streaming:** Real-time token delivery for summaries.
 
-- [x] **Latency Audit:** Implemented timing middleware (`X-Process-Time`).
-- [x] **DOM Optimization:**
-    - [x] **Selective Scraping:** Filtered hidden/irrelevant elements on the frontend.
-    - [x] **Viewport Priority:** Prioritized elements visible on the screen.
-    - [x] **Token Compression:** Minimized JSON schema for LLM prompts.
-- [x] **Backend Caching:** Implemented a TTL-based in-memory cache for explanations.
-- [x] **Streaming Responses (SSE):**
-    - [x] Created `/explain/stream` endpoint.
-    - [x] Backend logic to stream responses.
+## ✅ Phase 2: Multimodal Foundation (Completed)
+- [x] **Text-to-Speech:** Integrated `gTTS` with frontend playback.
+- [x] **Voice Wake-up:** "Hey Aura" offscreen document detection.
+- [x] **Speculative Execution:** Link-hover prefetching logic.
 
----
+## ✅ Phase 3: Proactive Agentic Loop (Completed)
+- [x] **Aura Brain:** Multi-agent pipeline using **PydanticAI**.
+- [x] **Accessibility Identity:** Persistent SQLite profile store.
+- [x] **Modular Backend:** Reorganized into `/api/v1` specialized endpoints.
 
-## ✅ Phase 2: Multimodal UI & Voice Interaction (Completed)
-*Goal: Enhance the user experience with rich UI and voice commands.*
+## ✅ Phase 4: UI Runtime & Isolation (Completed)
+- [x] **Floating Window:** Draggable, resizable, persistent React UI.
+- [x] **Shadow DOM:** Complete isolation from host page CSS.
+- [x] **Theme Engine:** Safe Dark Mode and High Contrast Mode.
+- [x] **TDD Baseline:** Vitest and Pytest environments established.
 
-- [x] **Adaptive Card UI:**
-    - [x] Backend now generates structured JSON for UI cards.
-    - [x] Frontend renders explanations using `adaptivecards-react`.
-- [x] **Text-to-Speech (TTS):**
-    - [x] Implemented `/tts` backend endpoint using `gTTS`.
-    - [x] UI includes a button to read summaries aloud.
-- [x] **Voice Wake-up:**
-    - [x] Added microphone permission and background service worker.
-    - [x] Implemented speech recognition to detect "Hey Aura" and activate the extension.
-
----
-
-## ✅ Phase 3: Speculative Execution & Future-Proofing (Completed)
-*Goal: Proactively reduce latency and document future architectural plans.*
-
-- [x] **Speculative Execution (Prefetch):**
-    - [x] Frontend: Detect link hovers to anticipate user navigation.
-    - [x] Backend: Created `/prefetch` endpoint with HTML distillation and caching.
-- [x] **Architectural Vision:**
-    - [x] Created `AGENTIC_ARCHITECTURE.md` outlining the roadmap to a proactive, agentic assistant.
-- [x] **Documentation Update:**
-    - [x] Updated `GEMINI.md` and `TODO.md` to reflect current project status.
-
----
-
-## ✅ Phase 4: Agentic Runtime & UI Adaptation (Completed)
-*Goal: Transform Aura into a proactive, self-validating accessibility runtime.*
-
-- [x] **Multi-Agent Pipeline:** Built a Judge-and-Act loop using PydanticAI.
-- [x] **Structural UI Healing:** Implemented Target Upscaling and Focus Portal.
-- [x] **Identity Store:** Persistent SQLite storage for rich accessibility profiles.
-- [x] **Stability:** Intelligent mock fallbacks for 429 error handling.
+## 🚀 Phase 5: The Aura "Hand" and "Eye" (In Progress)
+- [x] **Tool Execution Router (Hand):** Safe registry for agent-driven UI actions.
+- [x] **Vision Judge (Eye):** Multimodal verification of layout integrity.
+- [ ] **Autonomous Corrections:** Enable agent to automatically retry adaptations based on Vision Judge feedback.
+- [ ] **Regional Scaling:** Optimize Focus Portal to upscale specific regions instead of the whole page.
 
 ---
 
 ## 🏆 Final Judging Prep
-- [x] **Demo Polish:** Multi-agent runtime integrated and verified.
-- [ ] **Finalize README:** (Completed)
-- [ ] **Record Video:** Backup video of the "Focus Portal" in action.
+- [x] **Documentation:** Updated all READMEs and Roadmap docs.
+- [ ] **Performance Benchmarking:** Document latency reduction from prefetching.
+- [ ] **Recording:** Prepare demo videos showing "Real-time UI Healing" and "Vision Verification."

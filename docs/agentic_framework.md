@@ -200,36 +200,56 @@ UI layer applies changes using CSS / DOM transforms
 
 All actions are reversible
 
-3.6 Accessibility Judge Agent (Validation & QA)
-Purpose
-Verify that UI adaptations actually improve accessibility and do not introduce regressions.
+### 3.6 Tool Execution Router (The "Hand")
+**Purpose**  
+Safely execute accessibility actions requested by the agent without running arbitrary code.
 
-Inputs
+**Inputs**  
+Structured tool calls from the LLM (e.g., `tool="IncreaseFontSize", params={scale: 1.2}`).
 
-Original DOM
+**Available Tools**
+- **Typography:** `IncreaseFontSize`, `ChangeFontFamily`, `AdjustLineSpacing`
+- **Visuals:** `EnableDarkMode`, `EnableHighContrast`, `ReduceMotion`
+- **Cognitive:** `SimplifyLayout`, `HideSection`, `FocusElement`
+- **Navigation:** `ScrollTo`, `HighlightElement`
 
-Modified DOM
+**Why It Matters**
+- **Safety:** The AI cannot execute raw JavaScript or break the site logic.
+- **Determinism:** Tools have predictable, tested outcomes.
+- **Explainability:** Users can see exactly which "tool" was used (e.g., "Aura used 'High Contrast Mode'").
 
-User profile
+### 3.7 Vision Judge Agent (Closed-Loop Verification)
+**Purpose**  
+Verify that UI adaptations actually improve accessibility using **computer vision** (VLM).
 
-Heuristic accessibility rules (WCAG-inspired)
+**Inputs**
+- **Before Screenshot:** The UI state before adaptation.
+- **After Screenshot:** The UI state after tools were applied.
+- **Goal:** The original intent (e.g., "Make text readable").
 
-Outputs
+**Outputs**
+```python
+class VisionVerdict(BaseModel):
+    success: bool
+    improvement_score: float        # 0–1
+    new_issues: list[str]           # e.g., "Text overlapping", "Button hidden"
+    recommendation: Literal["keep", "refine", "rollback"]
+```
 
-class AccessibilityVerdict(BaseModel):
-    compliant: bool
-    remaining_issues: list[str]
-    regressions: list[str]
-    confidence_score: float
-Why This Is Powerful
+**Workflow**
+1. **Detect:** Agent identifies a readability issue.
+2. **Act:** Tool Router applies `IncreaseFontSize`.
+3. **Observe:** System captures a screenshot of the new state.
+4. **Evaluate:** Vision Judge compares Before vs. After.
+   - *If text overlaps:* Judge triggers `rollback` or `Refine(ReduceScale)`.
+   - *If readable:* Judge approves.
 
-Adds accountability to AI-driven changes
+**Why This Is Powerful**
+- **Self-Correction:** The system detects if it broke the UI and fixes it automatically.
+- **Multimodal Intelligence:** Demonstrates reasoning about visual layout, not just code.
+- **Trust:** Ensures adaptations are safe before the user has to deal with a broken interface.
 
-Demonstrates engineering rigor to judges
-
-Enables automated rollback if regressions are detected
-
-4. UI Adaptation Strategy
+## 4. UI Adaptation Strategy
 4.1 What UI Adaptation Means Here
 UI adaptation is structural transformation, not cosmetic theming.
 
@@ -316,7 +336,20 @@ To optimize for latency and API quota, Aura uses a **Consolidated Brain Agent** 
    - `judge_agent` validates the plan for WCAG safety.
 3. **Act:** Extension applies surgical DOM changes or activates the Focus Portal.
 4. **Feedback:** User provides satisfaction data; system enables one-click reset.
-6. Key Differentiators
+
+## 6. Advanced: The Vision Loop (Closed-Loop Adaptation)
+To move beyond "fire-and-forget" adaptations, Aura implements a self-correcting vision loop:
+
+1.  **Trigger:** A high-impact tool (e.g., `SimplifyLayout`) is executed.
+2.  **Capture:** The extension captures a visible tab screenshot.
+3.  **Analysis:** The **Vision Judge Agent** (using GPT-4o or LLaVA) analyzes the visual result.
+4.  **Verdict:**
+    *   **Pass:** The change is kept.
+    *   **Fail:** The system triggers an immediate rollback or attempts a refinement (e.g., reduces font scaling).
+
+This loop ensures that Aura never leaves the user with a broken or unusable interface, simulating a human designer reviewing their own work.
+
+## 7. Key Differentiators
 Proactive accessibility intervention
 
 Structured, explainable AI decisions
@@ -327,7 +360,7 @@ Built-in validation and regression detection
 
 Works with local LLMs (no API dependency)
 
-7. Summary
+## 8. Summary
 This agent-based architecture transforms accessibility from:
 
 static settings and passive tools

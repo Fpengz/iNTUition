@@ -27,3 +27,10 @@ class JudgeResult(BaseModel):
     success: bool
     errors: List[str]
     confidence: float = Field(..., ge=0.0, le=1.0)
+
+class VisionVerdict(BaseModel):
+    success: bool
+    improvement_score: float = Field(..., ge=0.0, le=1.0)
+    new_issues: List[str]
+    recommendation: Literal["keep", "refine", "rollback"]
+    explanation: str

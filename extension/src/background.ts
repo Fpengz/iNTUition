@@ -40,11 +40,15 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // Listen for messages from content scripts, popup, and offscreen document
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("Background received message:", message.type);
 
   if (message.type === 'PREFETCH_URL' && message.url) {
-    fetch('http://127.0.0.1:8000/prefetch', {
+    // In background script we don't have import.meta.env easily available 
+    // unless we use a different build approach, for now we fallback or 
+    // the user will need to update this too if they change the default.
+    const API_URL = 'http://localhost:8000';
+    fetch(`${API_URL}/prefetch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: message.url }),
@@ -54,6 +58,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .catch(error => console.error('Prefetch failed:', error));
     return true; // Keep the message channel open for asynchronous response
   } 
+  
+  if (message.type === 'CAPTURE_SCREENSHOT') {
+    const windowId = sender.tab?.windowId || chrome.windows.WINDOW_ID_CURRENT;
+    chrome.tabs.captureVisibleTab(windowId, { format: 'png', quality: 50 }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ dataUrl });
+      }
+    });
+    return true;
+  }
   
   if (message.type === 'start_av_capture') {
     (async () => {

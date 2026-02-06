@@ -57,6 +57,7 @@ const FloatingApp: React.FC = () => {
   const [cardData, setCardData] = useState<CardData>({ summary: '', actions: [] });
   const [processTime, setProcessTime] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
@@ -106,6 +107,75 @@ const FloatingApp: React.FC = () => {
       }
   };
 
+  const handleStreamExplain = useCallback(async (scrapedData: any) => {
+    setCardData({ summary: '', actions: [] });
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/explain/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dom_data: scrapedData, profile: userProfile }),
+      });
+
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Parse SSE format: "data: {...}\n\n"
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.replace('data: ', '');
+              const chunk = JSON.parse(jsonStr);
+              
+              if (chunk.type === 'summary') {
+                setCardData(prev => ({
+                  ...prev,
+                  summary: prev.summary + chunk.content
+                }));
+              } else if (chunk.type === 'action') {
+                setCardData(prev => {
+                    // Actions usually come as full sentences in chunks or tokens
+                    // For a cleaner UI, we handle action list accumulation
+                    if (prev.actions.length === 0) return { ...prev, actions: [chunk.content] };
+                    
+                    const newActions = [...prev.actions];
+                    // If the chunk is a fragment of the last action, append it
+                    // In our current delimiter logic, headers handle this, but let's be robust
+                    if (chunk.content.startsWith(', ') || chunk.content.startsWith(' ')) {
+                        newActions[newActions.length - 1] += chunk.content;
+                    } else {
+                        newActions.push(chunk.content);
+                    }
+                    return { ...prev, actions: newActions };
+                });
+              } else if (chunk.type === 'error') {
+                setError(chunk.content);
+              }
+            } catch (e) {
+              console.error("Error parsing stream chunk:", e);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(`Streaming failed: ${err.message}`);
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [userProfile]);
+
   const handleExplain = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -114,21 +184,6 @@ const FloatingApp: React.FC = () => {
     setShowSettings(false);
 
     try {
-      // In content script, we can't use chrome.tabs.sendMessage to ourselves easily,
-      // but we can trigger a custom event or just use a window message.
-      // For now, let's trigger it via chrome.runtime.sendMessage to background, which then sends it back to us,
-      // OR just call the function if we expose it on window.
-      
-      // Let's try to get DOM data by sending a message that OUR OWN content script will catch.
-      // Wait, content scripts can't catch messages from themselves via chrome.runtime.onMessage.
-      // But we can use window.postMessage.
-      
-      // Simpler: let's use chrome.runtime.sendMessage to background and let background handle the coordination if needed,
-      // but actually we just need the DOM data.
-      
-      // I'll assume for now that FloatingApp is injected in a way that it can access the DOM.
-      // We'll dispatch a custom event that the content script index.ts is listening for.
-      
       const getDomPromise = new Promise((resolve, reject) => {
           const handler = (event: any) => {
               if (event.data && event.data.type === 'AURA_DOM_RESPONSE') {
@@ -138,8 +193,6 @@ const FloatingApp: React.FC = () => {
           };
           window.addEventListener('message', handler);
           window.postMessage({ type: 'AURA_GET_DOM' }, '*');
-          
-          // Timeout
           setTimeout(() => {
               window.removeEventListener('message', handler);
               reject(new Error("DOM scraping timed out"));
@@ -148,6 +201,10 @@ const FloatingApp: React.FC = () => {
 
       const scrapedData: any = await getDomPromise;
 
+      // Start streaming explanation immediately for progressive UX
+      handleStreamExplain(scrapedData);
+
+      // Meanwhile, trigger the full agentic process for structural adaptations
       const payload = { 
           dom_data: scrapedData, 
           profile: userProfile,
@@ -171,7 +228,6 @@ const FloatingApp: React.FC = () => {
       if (result.action === "apply_ui" && result.ui_command) {
           const { ui_command } = result;
           
-          // Trigger adaptation in content script
           window.postMessage({ 
               type: 'AURA_ADAPT_UI', 
               adaptations: {
@@ -179,21 +235,37 @@ const FloatingApp: React.FC = () => {
                   highlight_elements: ui_command.highlight,
                   layout_mode: ui_command.layout_mode,
                   explanation: ui_command.explanation,
-                  apply_bionic: ui_command.apply_bionic
+                  apply_bionic: ui_command.apply_bionic,
+                  theme: ui_command.theme
               }
           }, '*');
 
-          setCardData({ summary: ui_command.explanation, actions: [] });
-          setShowFeedback(true);
-
-          if (userProfile.modalities.auto_tts) {
-              handleTTS(ui_command.explanation);
+          if (ui_command.visual_validation_required) {
+              setTimeout(async () => {
+                  try {
+                      const response = await chrome.runtime.sendMessage({ type: 'CAPTURE_SCREENSHOT' });
+                      if (response?.dataUrl) {
+                          const verifyRes = await fetch(`${API_BASE_URL}/verify`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                  screenshot: response.dataUrl,
+                                  goal: ui_command.explanation,
+                                  actions_applied: ui_command.highlight,
+                                  url: window.location.href
+                              })
+                          });
+                          const verdict = await verifyRes.json();
+                          if (verdict.recommendation === 'rollback') {
+                              window.postMessage({ type: 'AURA_ADAPT_UI', adaptations: { reset: true } }, '*');
+                              setError("Aura detected a layout issue and reverted for safety.");
+                          }
+                      }
+                  } catch (vErr) {
+                      console.error("Vision Loop Error:", vErr);
+                  }
+              }, 1000);
           }
-      } else {
-          setCardData({
-              summary: result.message || "Aura analyzed the page and it looks accessible.",
-              actions: []
-          });
       }
 
       setLoading(false);
@@ -201,7 +273,7 @@ const FloatingApp: React.FC = () => {
       setError(err.message || "An error occurred.");
       setLoading(false);
     }
-  }, [userProfile]);
+  }, [userProfile, handleStreamExplain]);
 
   const handleTTS = async (text: string) => {
     try {
@@ -308,12 +380,13 @@ const FloatingApp: React.FC = () => {
 
             {error && <div className="error-message" style={{ fontSize: '0.7rem', padding: '6px', marginTop: '0.5rem' }}>{error}</div>}
             
-            {cardData.summary && (
+            {(cardData.summary || isStreaming) && (
                 <div style={{ marginTop: '0.75rem' }}>
                     <AuraCardDisplay 
                         summary={cardData.summary}
                         actions={cardData.actions}
                         processTime={processTime}
+                        isStreaming={isStreaming}
                         onTTSClick={handleTTS}
                         onActionClick={handleActionClick}
                     />

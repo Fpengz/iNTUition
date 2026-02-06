@@ -184,7 +184,12 @@ window.addEventListener('message', (event) => {
         const data = scrapePage();
         window.postMessage({ type: 'AURA_DOM_RESPONSE', data }, '*');
     } else if (event.data.type === 'AURA_ADAPT_UI') {
-        applyAdaptations(event.data.adaptations);
+        if (event.data.adaptations.reset) {
+            resetAdaptations();
+            themeManager.applyTheme('none');
+        } else {
+            applyAdaptations(event.data.adaptations);
+        }
     } else if (event.data.type === 'AURA_SET_THEME') {
         themeManager.applyTheme(event.data.theme as AuraTheme);
     }

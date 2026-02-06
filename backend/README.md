@@ -1,41 +1,52 @@
 # Aura Backend: AI Accessibility Engine
 
-This is the FastAPI-based backend for Aura, providing DOM distillation and AI-powered reasoning using Gemini 2.0 Flash.
+The Aura backend provides multi-agent reasoning, DOM distillation, and multimodal verification using FastAPI and PydanticAI.
 
 ## 🚀 Setup
 
 1. **Prerequisites:**
     - Python 3.12+
-    - [uv](https://github.com/astral-sh/uv) (recommended)
+    - [uv](https://github.com/astral-sh/uv)
 
-2. **Environment Configuration:**
-   Create a `.env` file in this directory and add your Google Gemini API key:
-   ```env
-   GEMINI_API_KEY=your_api_key_here
+2. **Configuration:**
+   ```bash
+   cp .env.template .env
+   # Edit .env with your GEMINI_API_KEY
    ```
 
 3. **Installation & Running:**
    ```bash
-   export PYTHONPATH=.
+   uv sync --all-groups
    uv run uvicorn app.main:app --reload
    ```
 
-## 🛠️ Key Components
+## 🏗️ API Structure (`/api/v1`)
 
-- `app/agent/`: The **Aura Brain** — Multi-agent pipeline using PydanticAI.
-- `app/core/identity.py`: Persistent user profile and feedback storage (SQLite).
-- `app/core/distiller.py`: Logic for filtering and serializing DOM elements.
-- `app/core/explainer.py`: Integration with Gemini for page summarization.
-- `app/core/providers.py`: LLM provider configurations.
+The backend is organized into specialized endpoints for better scalability:
+- `endpoints/accessibility.py`: Main AI logic including `/process`, `/explain/stream`, and `/verify`.
+- `endpoints/identity.py`: User profile persistence and feedback store.
+- `endpoints/system.py`: Health checks and root diagnostics.
 
-## 🧪 Verification
+## 🧠 Agentic Capabilities
 
-Run the verification scripts to ensure the backend and AI connection are working correctly:
+- **Aura Brain:** A phased pipeline (Assessment -> Understanding -> Adaptation -> Judge).
+- **Vision Judge:** Multimodal verification of UI adaptations using screenshots.
+- **Tool Registry:** Set of safe actions (e.g., `SetFontSizeTool`, `SetThemeTool`) that the agent can "call" via structured JSON.
+- **Real-time Streaming:** Token-by-token summary generation for reduced perceived latency.
 
-```bash
-# Verify basic backend functionality
-uv run python verify_backend.py
+## ⚙️ Centralized Configuration
+Managed via `app/core/config.py` using **Pydantic Settings**.
+- Resolves `.env` using absolute paths for reliability.
+- Provides type-safe validation for all environment variables (LLM models, ports, DB paths).
 
-# Verify the multi-agent accessibility runtime
-uv run python verify_runtime.py
-```
+## 🧪 Test-Driven Development
+The backend uses **Pytest** with `asyncio` support.
+- **Mocks:** Sophisticated mocking of `pydantic_ai` and `genai` providers allows running full API tests without incurring LLM costs or requiring API keys.
+- **Run Tests:**
+  ```bash
+  export PYTHONPATH=.
+  uv run pytest
+  ```
+
+## 🧪 Verification scripts
+- `uv run python verify_runtime.py`: Tests the full `/process` agentic loop.

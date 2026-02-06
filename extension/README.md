@@ -1,56 +1,48 @@
-# Aura Extension: DOM Access & Extraction
+# Aura Extension: Adaptive Accessibility UI
 
-This document details how Aura interacts with web pages to provide accessibility insights.
+This document details how the Aura extension interacts with web pages and provides isolated, robust accessibility tools.
 
 ## Technical Architecture
 
-### 1. API for DOM Access
-Aura utilizes the standard Web **DOM API** within a **Content Script** (`src/content/index.ts`). Content scripts have full access to the page's DOM but operate in an isolated JavaScript environment.
+### 1. UI Isolation (Shadow DOM)
+Aura uses a **Shadow DOM** (`src/content/ShadowRoot.tsx`) to encapsulate its interface. 
+- **Zero Conflict:** Host page CSS cannot bleed into Aura, and Aura's styles cannot break the host page.
+- **Reset Styles:** Aura uses `all: initial` at the shadow root to ensure a consistent, branded experience on every website.
 
-### 2. Data Extraction Methods
-Aura scrapes the page using `document.querySelectorAll` to identify interactive and semantic elements.
-- **Target Selectors:** `button, a, input, h1, h2, h3, [role="button"]`.
-- **Attribute Mapping:** 
-    - **Role:** Inferred from `tagName` or `role` attribute.
-    - **Label:** Priority order: `textContent` -> `placeholder` -> `aria-label`.
-    - **Tracking:** Injects a temporary `data-aura-id` attribute into elements for precise mapping and highlighting.
+### 2. Floating Window UI
+Aura provides a draggable, resizable, and persistent floating window (`src/components/FloatingWindow.tsx`).
+- **State Persistence:** Uses `chrome.storage.local` to remember position, size, and minimized state across page reloads.
+- **Smart Dragging:** Includes a movement threshold to differentiate between dragging the window and clicking its branding to expand/collapse.
 
-### 3. Data Parsing & Distillation
-Raw data is sent to the Backend (`backend/app/core/distiller.py`) for processing:
-- **Filtering:** Removes empty or non-functional elements.
-- **Classification:** Categorizes elements into `Actions` (interactive) and `Summary` (informational) to optimize LLM context.
+### 3. Theme Adaptation Engine
+The **ThemeManager** (`src/content/ThemeManager.ts`) applies safe, real-time transformations:
+- **Media Protection:** Uses CSS `:not()` selectors and filter logic to ensure images, videos, and icons are not inverted or broken when applying Dark or High Contrast modes.
+- **Performance:** Applies changes instantly via injected stylesheets with `!important` overrides.
 
-### 4. Structural UI Adaptation (Adaptive Runtime)
-Beyond data extraction, Aura performs real-time structural modifications to the DOM:
-- **Surgical Augmentation:** Injects CSS transforms to upscale primary interactive elements (Target Upscaling) and adds semantic tooltips for guidance.
-- **Focus Portal:** A high-z-index "Stage" that physically isolates essential elements from the rest of the page, pulling them into a distraction-free modal while maintaining functional links to the original site logic.
-- **Reversibility:** Every adaptation is tracked and can be instantly rolled back using the `RESET_UI` action.
+### 4. Event Bridge & Tooling
+Aura decouples AI reasoning from DOM action using a **Tool Router** (`src/services/ToolRouter.ts`):
+- **Structured Commands:** Instead of raw JS, the backend sends specific tool calls (e.g., `IncreaseFontSize`).
+- **Security:** Only predefined, safe tools can be executed by the agent.
 
-### 5. Event Listener Implementation
-Communication is handled via `chrome.runtime.onMessage`:
-- **Trigger:** The Popup sends a `GET_DOM` message via `chrome.tabs.sendMessage`.
-- **Response:** The Content Script executes the scrape and returns the serialized JSON payload.
+### 5. Vision Loop (Multimodal Verification)
+For high-impact changes, the extension implements a closed-loop verification:
+1. **Act:** Apply UI adaptation.
+2. **Capture:** Use `chrome.tabs.captureVisibleTab` to take a viewport screenshot.
+3. **Verify:** Send screenshot to backend for analysis by the Vision Judge Agent.
+4. **Correct:** Revert or refine the UI if the judge detects layout issues.
 
-### 5. Cross-Origin Restrictions (CORS)
-- **Permissions:** `manifest.json` specifies `host_permissions` for `http://127.0.0.1:8000/*`.
-- **Backend Policy:** FastAPI uses `CORSMiddleware` to allow requests from extension origins.
+## Development & Build System
 
-### 6. Error Handling
-- **Injection Check:** Detects if the content script is missing (e.g., on `chrome://` pages or before a refresh).
-- **Communication Safety:** Uses try-catch blocks around `sendMessage` and `fetch` calls to handle network or runtime failures gracefully.
+### Vite Bundling
+To comply with Chrome Extension security and performance standards, the content script is built using a specialized configuration (`vite.content.config.ts`):
+- **Single File:** Bundles all dependencies (React, components, libraries) into one self-contained `index.js`.
+- **IIFE Format:** Prevents variable name collisions with the host page.
 
-### 7. Data Serialization Format (JSON)
-```json
-{
-  "title": "Page Title",
-  "url": "https://example.com",
-  "elements": [
-    {
-      "role": "button",
-      "text": "Login",
-      "selector": "[data-aura-id='aura-el-5']",
-      "aria_label": "Log into your account"
-    }
-  ]
-}
-```
+### TDD Strategy
+The extension uses **Vitest** and **JSDOM** for testing:
+- **Unit Tests:** `src/content/index.test.ts` (Scraping logic).
+- **Component Tests:** `src/components/FloatingWindow.test.tsx` (UI behavior).
+- **Service Tests:** `src/services/ToolRouter.test.ts` (Command routing).
+
+## Configuration
+All API calls use the `VITE_AURA_API_URL` environment variable defined in `extension/.env`. Default is `http://localhost:8000`.

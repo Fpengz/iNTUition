@@ -5,6 +5,7 @@ import logging  # Import logging
 from io import BytesIO
 
 from app.core.cache import explanation_cache
+from app.core.config import settings
 from gtts import gTTS
 
 logger = logging.getLogger(__name__)  # Get logger
@@ -41,7 +42,7 @@ class AuraTTS:
 
         # Create gTTS object and write to the in-memory file
         try:
-            tts = gTTS(text=text, lang="en")
+            tts = gTTS(text=text, lang=settings.TTS_LANG)
             tts.write_to_fp(mp3_fp)
             logger.debug(f"gTTS generation successful for {cache_key}")
         except Exception as e:

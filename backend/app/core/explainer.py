@@ -2,6 +2,7 @@
 
 import json
 import logging
+import asyncio
 from collections.abc import AsyncGenerator
 
 from app.core.factory import get_provider
@@ -114,44 +115,67 @@ class AuraExplainer:
             logger.error(f"Error in explain_page for {distilled_data.url}: {e}")
             raise e
 
+    def _prepare_stream_prompt(
+        self,
+        distilled_data: DistilledData,
+        user_profile: UserProfile | None,
+    ) -> str:
+        """Prompt optimized for raw token streaming with delimiters."""
+        summary_items = [
+            f"{item.r}: {item.t}"
+            for item in distilled_data.summary
+        ]
+        
+        prompt = f"""
+        You are Aura, an accessibility companion. 
+        Analyze the web page and provide a 2-sentence summary focused on the main purpose.
+        
+        User Profile: {user_profile.model_dump() if user_profile else "standard accessibility needs"}.
+        
+        Page Title: {distilled_data.title}
+        Content Snippets: {", ".join(summary_items[:15])}
+        
+        Output format:
+        SUMMARY: [Your summary here]
+        ACTIONS: [Action 1], [Action 2]
+        
+        Use simple, calming language. Do not use JSON or markdown.
+        """
+        return prompt
+
     async def stream_explanation(
         self,
         distilled_data: DistilledData,
         user_profile: UserProfile | None = None,
     ) -> AsyncGenerator[str, None]:
-        """Streams a structured summary of the distilled DOM as JSON chunks."""
-        logger.info(f"Streaming explanation for URL: {distilled_data.url}")
-        prompt = self._prepare_explain_prompt(distilled_data, user_profile)
+        """Streams the explanation token-by-token using delimiters."""
+        logger.info(f"Streaming tokenized explanation for URL: {distilled_data.url}")
+        prompt = self._prepare_stream_prompt(distilled_data, user_profile)
+        
+        current_section = None
+        
         try:
-            response_text = await self.provider.generate(prompt)
-            raw_content = response_text.content if response_text.content else "{}"
-            content = self._clean_llm_json(raw_content)
-
-            try:
-                explanation_data = ExplanationResponse.model_validate_json(content)
-            except Exception:
-                explanation_data = ExplanationResponse(
-                    summary="Aura is ready to assist. Please try again if the content didn't load properly.",
-                    actions=[]
-                )
-
-            if explanation_data.summary:
-                logger.debug(f"Yielding summary chunk for {distilled_data.url}")
-                yield json.dumps(
-                    {"type": "summary", "content": explanation_data.summary}
-                )
-
-            if explanation_data.actions:
-                for action in explanation_data.actions:
-                    logger.debug(f"Yielding action chunk: {action}")
-                    yield json.dumps({"type": "action", "content": action})
-            
-            logger.info(f"Finished streaming explanation for {distilled_data.url}")
+            async for chunk in self.provider.generate_stream(prompt):
+                # Check for section headers in the chunk
+                if "SUMMARY:" in chunk:
+                    current_section = "summary"
+                    content = chunk.split("SUMMARY:")[1].strip()
+                    if content:
+                        yield json.dumps({"type": "summary", "content": content})
+                elif "ACTIONS:" in chunk:
+                    current_section = "actions"
+                    content = chunk.split("ACTIONS:")[1].strip()
+                    if content:
+                        yield json.dumps({"type": "action", "content": content})
+                elif current_section:
+                    yield json.dumps({"type": current_section, "content": chunk})
+                
+                await asyncio.sleep(0) # Yield control
+                
+            logger.info(f"Finished token streaming for {distilled_data.url}")
         except Exception as e:
-            logger.error(f"Error in stream_explanation for {distilled_data.url}: {e}")
-            yield json.dumps(
-                {"type": "error", "content": f"Aura Error (Stream): {str(e)}"}
-            )
+            logger.error(f"Error in token stream: {e}")
+            yield json.dumps({"type": "error", "content": str(e)})
 
     async def find_action(
         self, distilled_data: DistilledData, query: str

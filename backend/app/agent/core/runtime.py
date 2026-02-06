@@ -6,6 +6,7 @@ from app.agent.models.skeleton import PageSnapshot, AccessibilityAssessment, UIA
 from app.agent.core.heuristics import should_run_ai
 from app.agent.core.bionic_helper import should_apply_bionic
 from app.agent.agents.phased import assessment_agent, adaptation_agent, judge_agent
+from app.agent.agents.vision import vision_judge_agent
 from app.schemas import UserProfile, DOMData
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,10 @@ class AccessibilityRuntime:
             # --- HARD SAFETY GATE: Never hide the main content ---
             safe_hide = [s for s in adaptation.hide_elements if s.lower() != main_selector.lower()]
 
+            # Determine if we should trigger the Vision Loop
+            # Trigger if complexity is high OR confidence is borderline
+            visual_required = assessment.complexity_score > 7 or adaptation.confidence < 0.8
+
             return {
                 "action": "apply_ui",
                 "ui_command": {
@@ -76,7 +81,8 @@ class AccessibilityRuntime:
                     "explanation": adaptation.explanation,
                     "risk_level": assessment.risk_level,
                     "complexity": assessment.complexity_score,
-                    "apply_bionic": should_apply_bionic(user_profile)
+                    "apply_bionic": should_apply_bionic(user_profile),
+                    "visual_validation_required": visual_required
                 },
                 "mode": "phased_agent"
             }
@@ -118,7 +124,8 @@ class AccessibilityRuntime:
                 "explanation": explanation,
                 "risk_level": "medium",
                 "complexity": 7,
-                "apply_bionic": should_apply_bionic(user_profile)
+                "apply_bionic": should_apply_bionic(user_profile),
+                "visual_validation_required": False
             },
             "mode": "mock_fallback"
         }

@@ -133,3 +133,10 @@ class TTSRequest(BaseModel):
 class PrefetchRequest(BaseModel):
     """Payload for URL prefetching."""
     url: HttpUrl
+
+class VerificationRequest(BaseModel):
+    """Payload for screenshot-based visual verification."""
+    screenshot: str  # Base64 encoded image
+    goal: str
+    actions_applied: list[str]
+    url: str
