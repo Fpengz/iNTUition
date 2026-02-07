@@ -8,23 +8,26 @@ declare global {
   }
 }
 
-// Check for browser compatibility
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
 let recognition: any = null;
 let isListening = false;
 const WAKE_WORD = "hey aura";
 
-function startWakeWordListener() {
-  if (!SpeechRecognition) {
-    console.error("Speech Recognition API not supported.");
-    return;
-  }
+export const _recognitionFactory = {
+    create: () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        return SpeechRecognition ? new SpeechRecognition() : null;
+    }
+};
 
+function startWakeWordListener() {
   if (isListening) return;
 
   try {
-    recognition = new SpeechRecognition();
+    recognition = _recognitionFactory.create();
+    if (!recognition) {
+        console.error("Speech Recognition API not supported.");
+        return;
+    }
     recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = 'en-US';
@@ -43,10 +46,10 @@ function startWakeWordListener() {
     };
 
     recognition.onend = () => {
-      console.log("Speech recognition ended in offscreen.");
-      isListening = false;
-      // Restart if it stopped unexpectedly
+      console.log("Speech recognition ended in offscreen. isListening:", isListening);
+      // Restart if it stopped unexpectedly (isListening is still true)
       if (isListening) {
+          console.log("Restarting wake word listener...");
           startWakeWordListener(); 
       }
     };
@@ -68,11 +71,11 @@ function startWakeWordListener() {
 }
 
 function stopWakeWordListener() {
+  isListening = false;
   if (recognition) {
     recognition.stop();
     recognition = null;
   }
-  isListening = false;
   console.log("Wake word listener stopped.");
   chrome.runtime.sendMessage({ type: "capture_status", status: "stopped" });
 }

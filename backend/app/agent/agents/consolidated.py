@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.consolidated import ConsolidatedResponse
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.consolidated import ConsolidatedResponse
 
 aura_brain_agent = Agent(
     get_model(),

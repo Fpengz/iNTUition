@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Type
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -9,7 +9,7 @@ class BaseTool(ABC):
 
     name: str
     description: str
-    args_schema: Type[BaseModel]
+    args_schema: type[BaseModel]
 
     @abstractmethod
     async def run(self, **kwargs: Any) -> Any:

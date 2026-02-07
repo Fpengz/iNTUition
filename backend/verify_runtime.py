@@ -1,10 +1,12 @@
 import asyncio
-import httpx
 import json
+
+import httpx
+
 
 async def verify_runtime():
     url = "http://127.0.0.1:8000/process"
-    
+
     payload = {
         "dom_data": {
             "title": "CS231n Convolutional Neural Networks",
@@ -22,14 +24,14 @@ async def verify_runtime():
             "language_level": "simple"
         },
         "logs": [
-            "user scrolled rapidly", 
+            "user scrolled rapidly",
             "user hovered over login button for 5 seconds",
             "repeated scrolling loops",
             "rage clicks detected"
         ],
         "is_explicit": True
     }
-    
+
     print(f"Sending request to {url}...")
     async with httpx.AsyncClient() as client:
         try:

@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.risks import AccessibilityRisk
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.risks import AccessibilityRisk
 
 health_check_agent = Agent(
     get_model(),

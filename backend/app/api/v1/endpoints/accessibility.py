@@ -1,35 +1,37 @@
+import base64
+import hashlib
 import json
 import logging
-import hashlib
 import time
-from typing import Any
 from collections.abc import AsyncGenerator
+from typing import Any
 
-from fastapi import APIRouter, Request, Response, BackgroundTasks
-from fastapi.responses import StreamingResponse
 import httpx
+from fastapi import APIRouter, BackgroundTasks, Request, Response
+from fastapi.responses import StreamingResponse
+from pydantic_ai.messages import BinaryImage, ModelRequestPart, UserPromptPart
 
-from app.schemas import (
-    DOMData,
-    UserProfile,
-    PrefetchRequest,
-    ExplanationResponse,
-    ActionRequest,
-    ActionResponse,
-    TTSRequest,
-    DistilledData,
-    VerificationRequest,
-)
-from app.core.distiller import DOMDistiller
-from app.core.explainer import AuraExplainer
-from app.core.tts import AuraTTS
-from app.core.cache import explanation_cache
+from app.agent.agents.vision import vision_judge_agent
 from app.agent.core.agent import AuraAgent
 from app.agent.core.runtime import AccessibilityRuntime
 from app.agent.tools.distiller_tool import DistillerTool
 from app.agent.tools.explainer_tool import ExplainerTool
 from app.agent.tools.tts_tool import TTSTool
-from app.agent.agents.vision import vision_judge_agent
+from app.core.cache import explanation_cache
+from app.core.distiller import DOMDistiller
+from app.core.explainer import AuraExplainer
+from app.core.tts import AuraTTS
+from app.schemas import (
+    ActionRequest,
+    ActionResponse,
+    DistilledData,
+    DOMData,
+    ExplanationResponse,
+    PrefetchRequest,
+    TTSRequest,
+    UserProfile,
+    VerificationRequest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,7 @@ async def prefetch_and_cache(url: Any) -> None:
 
 @router.post("/prefetch")
 async def prefetch(request_body: PrefetchRequest, background_tasks: BackgroundTasks):
+    logger.info(f"Prefetch requested for: {request_body.url}")
     background_tasks.add_task(prefetch_and_cache, request_body.url)
     return {"message": "URL accepted for prefetching."}
 
@@ -88,7 +91,10 @@ async def process_runtime(request: Request):
         logs = body.get("logs", [])
         is_explicit = body.get("is_explicit", False)
 
+        logger.info(f"Processing request for URL: {raw_dom.get('url') if raw_dom else 'Unknown'} | Profile ID: {raw_profile.get('aura_id') if raw_profile else 'Unknown'}")
+
         if not raw_dom or not raw_profile:
+            logger.warning("Rejecting /process request due to missing dom_data or profile")
             return Response(content=json.dumps({"error": "Missing dom_data or profile"}), status_code=422, media_type="application/json")
 
         dom_data = DOMData(**raw_dom)
@@ -196,7 +202,7 @@ async def explain_stream(request: Request, profile: UserProfile | None = None):
                             pass
                     except Exception:
                         pass
-                
+
                 # Cache final result (simplified)
                 # ...
             except Exception as e:
@@ -209,62 +215,53 @@ async def explain_stream(request: Request, profile: UserProfile | None = None):
 
 @router.post("/action", response_model=ActionResponse)
 async def action(request_body: ActionRequest):
+    logger.info(f"Action mapping requested for query: '{request_body.query}'")
     dom_data = DOMData(**request_body.dom_data) if isinstance(request_body.dom_data, dict) else request_body.dom_data
     distilled = DOMDistiller.distill(dom_data)
     return await explainer.find_action(distilled, request_body.query)
 
 @router.post("/tts")
-
 async def text_to_speech(request_body: TTSRequest):
-
     try:
-
+        logger.debug(f"Synthesizing speech for text: {request_body.text[:50]}...")
         audio_bytes = tts_synthesizer.synthesize_speech(request_body.text)
-
         return Response(content=audio_bytes, media_type="audio/mpeg")
-
     except Exception as e:
-
-        logger.error(f"TTS error: {e}")
-
+        logger.error(f"TTS error: {e}", exc_info=True)
         return Response(content=json.dumps({"error": f"TTS Error: {e}"}), status_code=500, media_type="application/json")
 
-
-
 @router.post("/verify")
-
 async def verify_adaptation(request_body: VerificationRequest):
-
     """Visually verifies the adaptation using Vision Judge."""
-
     try:
-
-        # Prepare multimodal input for pydantic-ai
-
-        # Note: In real production, we'd handle base64 -> image bytes conversion here
-
-        # For now, we pass the context to the agent.
-
+        logger.info(f"Verifying adaptation for URL: {request_body.url}")
         context = f"URL: {request_body.url}\nGoal: {request_body.goal}\nActions Applied: {request_body.actions_applied}"
-
         
+        # Prepare multimodal input for pydantic-ai
+        parts: list[ModelRequestPart] = [
+            UserPromptPart(content=f"Please analyze this UI adaptation.\n{context}")
+        ]
 
-        # We simulate multimodal input by letting the agent know there's a screenshot.
+        if request_body.screenshot:
+            # Handle data URL or raw base64
+            img_data = request_body.screenshot
+            if "," in img_data:
+                header, encoded = img_data.split(",", 1)
+                mime_type = header.split(";")[0].split(":")[1]
+                image_bytes = base64.b64decode(encoded)
+            else:
+                image_bytes = base64.b64decode(img_data)
+                mime_type = "image/png"  # Default
+            
+            parts.append(BinaryImage(data=image_bytes, media_type=mime_type))
 
-        # Real integration would use pydantic_ai's multimodal capabilities if supported by the provider.
-
-        result = await vision_judge_agent.run(
-
-            f"Please analyze this UI adaptation.\n{context}",
-
-            # In a real setup, we'd pass the image here as well.
-
-        )
-
+        result = await vision_judge_agent.run(parts)
         return result.data
 
     except Exception as e:
-
         logger.error(f"Verification error: {e}")
-
-        return {"success": False, "recommendation": "keep", "explanation": f"Verification failed: {str(e)}"}
+        return {
+            "success": False, 
+            "recommendation": "keep", 
+            "explanation": f"Verification failed: {str(e)}"
+        }

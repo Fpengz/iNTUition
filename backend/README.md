@@ -39,6 +39,13 @@ Managed via `app/core/config.py` using **Pydantic Settings**.
 - Resolves `.env` using absolute paths for reliability.
 - Provides type-safe validation for all environment variables (LLM models, ports, DB paths).
 
+## 📊 Observability & Debugging
+The backend uses a structured logging system to facilitate real-time monitoring and issue diagnosis.
+- **Request/Response Logging:** Every API call is logged with its method, path, status code, and processing duration.
+- **Phased Tracing:** Detailed logs for each phase of the agentic OODA loop (Assessment, Decision, Validation).
+- **Intelligent Fallback:** If the primary LLM provider (e.g., Ollama) is unavailable, the system automatically triggers a content-aware mock fallback to ensure demo stability. Look for `Triggering Intelligent Mock Fallback` in the logs.
+- **Configuration Dump:** On startup, the system logs the active configuration (with masked secrets).
+
 ## 🧪 Test-Driven Development
 The backend uses **Pytest** with `asyncio` support.
 - **Mocks:** Sophisticated mocking of `pydantic_ai` and `genai` providers allows running full API tests without incurring LLM costs or requiring API keys.

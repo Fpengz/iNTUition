@@ -1,15 +1,15 @@
-import sqlite3
-import json
 import logging
-from app.schemas import UserProfile
+import sqlite3
 
 from app.core.config import settings
+from app.schemas import UserProfile
 
 logger = logging.getLogger(__name__)
 
 DB_PATH = settings.DATABASE_PATH
 
 def init_db():
+    logger.info(f"Initializing database at {DB_PATH}")
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS profiles (
@@ -30,6 +30,7 @@ def init_db():
         """)
 
 def save_profile(profile: UserProfile):
+    logger.debug(f"Identity: Saving profile for {profile.aura_id} to database")
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO profiles (aura_id, profile_json) VALUES (?, ?)",
@@ -38,11 +39,14 @@ def save_profile(profile: UserProfile):
     logger.info(f"Identity: Saved profile for {profile.aura_id}")
 
 def load_profile(aura_id: str) -> UserProfile | None:
+    logger.debug(f"Identity: Loading profile for {aura_id}")
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute("SELECT profile_json FROM profiles WHERE aura_id = ?", (aura_id,))
         row = cursor.fetchone()
         if row:
+            logger.debug(f"Identity: Successfully loaded profile for {aura_id}")
             return UserProfile.model_validate_json(row[0])
+    logger.info(f"Identity: No profile found for {aura_id}")
     return None
 
 def save_feedback(aura_id: str, url: str, helpful: bool, comment: str | None = None):

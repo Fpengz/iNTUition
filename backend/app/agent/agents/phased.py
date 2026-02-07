@@ -1,14 +1,15 @@
 from pydantic_ai import Agent
-from app.agent.models.skeleton import (
-    AccessibilityAssessment, 
-    UIAdaptationDecision, 
-    JudgeResult
-)
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.skeleton import (
+    AccessibilityAssessment,
+    JudgeResult,
+    UIAdaptationDecision,
+)
 
 # Phase 1: Assessment Agent (Fast)
 assessment_agent = Agent(
-    get_model(), 
+    get_model(),
     output_type=AccessibilityAssessment,
     retries=3,
     instructions=(

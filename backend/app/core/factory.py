@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 
+
 def get_provider() -> BaseProvider:
     """Factory function to get the configured LLM provider.
 

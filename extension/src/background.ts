@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } 
   
   if (message.type === 'CAPTURE_SCREENSHOT') {
-    const windowId = sender.tab?.windowId || chrome.windows.WINDOW_ID_CURRENT;
+    const windowId = sender.tab?.windowId || chrome.windows?.WINDOW_ID_CURRENT || -2;
     chrome.tabs.captureVisibleTab(windowId, { format: 'png', quality: 50 }, (dataUrl) => {
       if (chrome.runtime.lastError) {
         sendResponse({ error: chrome.runtime.lastError.message });
@@ -74,7 +74,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'start_av_capture') {
     (async () => {
       try {
-        await setupOffscreenDocument(chrome.offscreen.Reason.USER_MEDIA);
+        const reason = chrome.offscreen?.Reason?.USER_MEDIA || 'AUDIO_VIDEO';
+        await setupOffscreenDocument(reason as any);
         // Send message to offscreen document to start capture
         chrome.runtime.sendMessage({ type: "start_capture", target: "offscreen" });
         sendResponse({ status: "capture_initiation_sent" });
@@ -89,7 +90,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'stop_av_capture') {
     (async () => {
       try {
-        await setupOffscreenDocument(chrome.offscreen.Reason.USER_MEDIA);
+        const reason = chrome.offscreen?.Reason?.USER_MEDIA || 'AUDIO_VIDEO';
+        await setupOffscreenDocument(reason as any);
         chrome.runtime.sendMessage({ type: "stop_capture", target: "offscreen" });
         sendResponse({ status: "capture_stop_sent" });
       } catch (err) {

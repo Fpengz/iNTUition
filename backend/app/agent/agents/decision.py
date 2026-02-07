@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.adaptation import UIActions
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.adaptation import UIActions
 
 ui_adaptation_agent = Agent(
     get_model(),

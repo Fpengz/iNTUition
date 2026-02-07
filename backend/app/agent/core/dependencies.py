@@ -4,12 +4,14 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.google import GoogleProvider
 from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai.providers.openai import OpenAIProvider
+
 from app.core.config import settings
+
 
 def get_model() -> Model:
     """Returns the configured model for PydanticAI based on settings."""
     provider = settings.LLM_PROVIDER.lower()
-    
+
     if provider == "gemini":
         # For Gemini, we use GoogleProvider with GoogleModel
         google_provider = GoogleProvider(
@@ -46,3 +48,20 @@ def get_model() -> Model:
             settings.GEMINI_MODEL,
             provider=google_provider
         )
+
+
+def get_vision_model() -> Model:
+    """Returns a vision-capable model, specifically Gemini 1.5 Pro if on Gemini."""
+    provider = settings.LLM_PROVIDER.lower()
+
+    if provider == "gemini":
+        google_provider = GoogleProvider(
+            api_key=settings.GEMINI_API_KEY
+        )
+        return GoogleModel(
+            settings.GEMINI_VISION_MODEL,
+            provider=google_provider
+        )
+    
+    # Fallback to standard model if not using Gemini
+    return get_model()

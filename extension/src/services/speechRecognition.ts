@@ -35,11 +35,7 @@ declare global {
 
 
 // Check for browser compatibility
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-if (!SpeechRecognition) {
-  throw new Error("Speech Recognition API is not supported in this browser.");
-}
+const getSpeechRecognition = () => window.SpeechRecognition || window.webkitSpeechRecognition;
 
 interface SpeechRecognitionServiceOptions {
   onResult: (transcript: string) => void;
@@ -53,6 +49,10 @@ export class SpeechRecognitionService {
   private options: SpeechRecognitionServiceOptions;
 
   constructor(options: SpeechRecognitionServiceOptions) {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) {
+      throw new Error("Speech Recognition API is not supported in this browser.");
+    }
     this.options = options;
     this.recognition = new SpeechRecognition();
     this.recognition.continuous = true;

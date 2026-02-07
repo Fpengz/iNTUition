@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class CognitiveState(BaseModel):
     """Current mental load state of the user."""
     overloaded: bool = Field(..., description="Whether the user is likely experiencing overload.")

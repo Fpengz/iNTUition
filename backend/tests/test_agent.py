@@ -1,9 +1,12 @@
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+
 from app.agent.core.agent import AuraAgent
 from app.agent.tools.distiller_tool import DistillerTool
 from app.schemas import DistilledData
+
 
 @pytest.mark.asyncio
 async def test_agent_initialization():
@@ -21,10 +24,10 @@ async def test_agent_execute_final_answer():
         mock_provider = AsyncMock()
         mock_provider.generate.return_value.content = "Final Answer: I am ready to help."
         mock_get_provider.return_value = mock_provider
-        
+
         agent = AuraAgent([])
         response = await agent.execute("Hello")
-        
+
         assert response == "I am ready to help."
         assert len(agent.state.conversation_history) == 2
 
@@ -40,12 +43,12 @@ async def test_agent_ooda_loop_logic():
             AsyncMock(content='Final Answer: I have analyzed the page.')
         ]
         mock_get_provider.return_value = mock_provider
-        
+
         distiller_tool = DistillerTool()
         distiller_tool.run = AsyncMock(return_value=DistilledData(title="test", url="https://test.com/", summary=[], actions=[]))
-        
+
         agent = AuraAgent([distiller_tool])
         response = await agent.execute("Analyze this page")
-        
+
         assert response == "I have analyzed the page."
         assert distiller_tool.run.called

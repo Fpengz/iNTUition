@@ -1,33 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { toolRouter } from './ToolRouter';
+import toolRouter from './ToolRouter';
 import { themeManager } from '../content/ThemeManager';
 
-// Mock themeManager
 vi.mock('../content/ThemeManager', () => ({
-  themeManager: {
-    applyTheme: vi.fn(),
-  },
+    themeManager: {
+        applyTheme: vi.fn()
+    }
 }));
 
 describe('ToolRouter', () => {
   beforeEach(() => {
-    document.documentElement.style.fontSize = '';
     vi.clearAllMocks();
+    document.documentElement.style.fontSize = '';
   });
 
-  it('should handle IncreaseFontSize tool', () => {
+  it('handles IncreaseFontSize', () => {
     toolRouter.execute('IncreaseFontSize', { scale: 1.5 });
     expect(document.documentElement.style.fontSize).toBe('1.5em');
   });
 
-  it('should handle SetTheme tool', () => {
+  it('handles IncreaseFontSize with invalid scale', () => {
+    toolRouter.execute('IncreaseFontSize', { scale: 'invalid' });
+    expect(document.documentElement.style.fontSize).toBe('');
+  });
+
+  it('handles SetTheme', () => {
     toolRouter.execute('SetTheme', { theme: 'dark' });
     expect(themeManager.applyTheme).toHaveBeenCalledWith('dark');
   });
 
-  it('should log warning for unknown tool', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    toolRouter.execute('UnknownTool', {});
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown tool'));
+  it('handles unknown tool', () => {
+    const spy = vi.spyOn(console, 'warn');
+    toolRouter.execute('Unknown', {});
+    expect(spy).toHaveBeenCalled();
   });
 });

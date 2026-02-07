@@ -1,14 +1,14 @@
-from typing import Any, List, Optional, Dict
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class AgentState(BaseModel):
     """Represents the current state of the agent's interaction."""
-    
-    conversation_history: List[dict[str, str]] = []
-    current_url: Optional[str] = None
-    dom_summary: Optional[str] = None
+
+    conversation_history: list[dict[str, str]] = []
+    current_url: str | None = None
+    dom_summary: str | None = None
     scratchpad: dict[str, Any] = {}
 
     def add_message(self, role: str, content: str):
@@ -30,9 +30,9 @@ class AgentState(BaseModel):
 
 class SessionStore:
     """In-memory store for managing agent states across different sessions/tabs."""
-    
+
     def __init__(self) -> None:
-        self._sessions: Dict[str, AgentState] = {}
+        self._sessions: dict[str, AgentState] = {}
 
     def get_session(self, session_id: str) -> AgentState:
         """Retrieves or creates a new session state."""

@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.state import CognitiveState
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.state import CognitiveState
 
 cognitive_evaluator_agent = Agent(
     get_model(),

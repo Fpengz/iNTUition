@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.schemas import ExplanationResponse, ActionResponse
+
+import pytest
+
+from app.schemas import ActionResponse, ExplanationResponse
+
 
 @pytest.mark.asyncio
 async def test_health_check(client):
@@ -22,7 +25,7 @@ async def test_explain_endpoint(client):
             summary="This is a test summary.",
             actions=["Action 1", "Action 2"]
         ))
-        
+
         mock_dom = {
             "title": "Test Shop",
             "url": "https://testshop.com/",
@@ -31,9 +34,9 @@ async def test_explain_endpoint(client):
                 {"role": "button", "text": "Buy", "selector": "#buy", "y": 250.75}
             ]
         }
-        
+
         response = await client.post("/explain", json={"dom_data": mock_dom})
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["explanation"]["summary"] == "This is a test summary."
@@ -47,7 +50,7 @@ async def test_action_endpoint(client):
             selector="#buy",
             explanation="Click the buy button."
         ))
-        
+
         mock_request = {
             "dom_data": {
                 "title": "Test Shop",
@@ -56,8 +59,8 @@ async def test_action_endpoint(client):
             },
             "query": "I want to buy"
         }
-        
+
         response = await client.post("/action", json=mock_request)
-        
+
         assert response.status_code == 200
         assert response.json()["selector"] == "#buy"

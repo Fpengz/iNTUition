@@ -1,5 +1,7 @@
 from typing import Literal
+
 from pydantic import BaseModel, Field
+
 
 class UIActions(BaseModel):
     """Proposed structural adaptations for the UI."""

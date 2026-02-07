@@ -4,9 +4,10 @@ import hashlib
 import logging  # Import logging
 from io import BytesIO
 
+from gtts import gTTS
+
 from app.core.cache import explanation_cache
 from app.core.config import settings
-from gtts import gTTS
 
 logger = logging.getLogger(__name__)  # Get logger
 

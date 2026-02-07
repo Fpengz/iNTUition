@@ -1,7 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from app.agent.agents.vision import vision_judge_agent
 from app.agent.models.skeleton import VisionVerdict
+
 
 @pytest.mark.asyncio
 async def test_vision_judge_agent_definition():
@@ -19,7 +22,7 @@ async def test_vision_judge_logic_mocked():
             recommendation="keep",
             explanation="The UI looks much better."
         ))
-        
+
         result = await vision_judge_agent.run("Fake context with image")
         assert result.data.success is True
         assert result.data.recommendation == "keep"

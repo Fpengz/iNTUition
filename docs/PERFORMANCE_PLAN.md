@@ -52,3 +52,13 @@ This document outlines the strategy for minimizing latency and optimizing resour
 ## 📊 Performance Baseline
 - **Target Latency:** < 1.5s for cached hits, < 3s for fresh LLM generations.
 - **Target Payload:** < 50KB for the distilled DOM transfer.
+
+## 🧪 Automated Benchmarking
+We have implemented a specialized benchmarking script to measure end-to-end latency and server-side processing time.
+- **Location:** `backend/benchmark.py`
+- **Usage:**
+  ```bash
+  cd backend
+  uv run python benchmark.py
+  ```
+- **Capabilities:** Measure average latency, min/max spreads, and `X-Process-Time` overhead.

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class PageSummary(BaseModel):
     """Semantic understanding of the current webpage."""
     page_type: str = Field(..., description="Type of page (e.g., form, article, dashboard).")

@@ -349,7 +349,13 @@ To move beyond "fire-and-forget" adaptations, Aura implements a self-correcting 
 
 This loop ensures that Aura never leaves the user with a broken or unusable interface, simulating a human designer reviewing their own work.
 
-## 7. Key Differentiators
+## 7. Reliability & Fallbacks
+To ensure a consistent user experience during demos or in offline scenarios, Aura includes an **Intelligent Mock Fallback** mechanism:
+- **Connection Awareness:** The system detects when the primary LLM provider (e.g., local Ollama instance) is unavailable.
+- **Contextual Synthesis:** Instead of a generic error, the system synthesizes a useful response using the locally-scraped `dom_data` (Title, URL, and Content Summary).
+- **Personalization Preservation:** The fallback honors the user's `language_level` preference even without an active LLM.
+
+## 8. Key Differentiators
 Proactive accessibility intervention
 
 Structured, explainable AI decisions

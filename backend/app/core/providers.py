@@ -2,11 +2,13 @@
 
 import asyncio
 import logging
+import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
+from ollama import Client
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -55,8 +57,6 @@ class OllamaProvider(BaseProvider):
 
     def __init__(self, host: str, model: str):
         """Initializes the Ollama provider."""
-        from ollama import Client
-
         self.client = Client(host=host)
         self.model = model
 
@@ -69,29 +69,41 @@ class OllamaProvider(BaseProvider):
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Ollama's local API."""
-        logger.debug(f"Calling Ollama generate (model: {self.model})")
+        logger.info(f"Ollama: Generating content with model={self.model} | Temp={temperature}")
+        start_time = time.perf_counter()
         options = {
             "temperature": temperature,
             "num_predict": max_tokens,
         }
-        response = self.client.generate(model=self.model, prompt=prompt, options=options)
-        return AuraResponse(
-            content=str(response.get("response", "")),
-            raw_response=response,
-            usage={"total_tokens": response.get("eval_count", 0)},
-        )
+        try:
+            response = self.client.generate(model=self.model, prompt=prompt, options=options)
+            duration = time.perf_counter() - start_time
+            logger.info(f"Ollama: Generation complete | Duration={duration:.4f}s")
+            return AuraResponse(
+                content=str(response.get("response", "")),
+                raw_response=response,
+                usage={"total_tokens": response.get("eval_count", 0)},
+            )
+        except Exception as e:
+            logger.error(f"Ollama error: {e}", exc_info=True)
+            raise
 
     async def generate_stream(
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AsyncGenerator[str, None]:
         """Streams content using Ollama's local API."""
+        logger.info(f"Ollama: Starting stream with model={self.model}")
         options = {
             "temperature": temperature,
             "num_predict": max_tokens,
         }
-        for chunk in self.client.generate(model=self.model, prompt=prompt, options=options, stream=True):
-            yield chunk.get("response", "")
-            await asyncio.sleep(0)
+        try:
+            for chunk in self.client.generate(model=self.model, prompt=prompt, options=options, stream=True):
+                yield chunk.get("response", "")
+                await asyncio.sleep(0)
+        except Exception as e:
+            logger.error(f"Ollama stream error: {e}", exc_info=True)
+            raise
 
 
 class GeminiProvider(BaseProvider):
@@ -114,27 +126,39 @@ class GeminiProvider(BaseProvider):
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AuraResponse:
         """Generates content using Google's GenAI SDK."""
-        logger.debug(f"Calling Gemini generate (model: {self.model})")
-        response = self.client.models.generate_content(
-            model=self.model, contents=prompt
-        )
-        return AuraResponse(
-            content=str(response.text) if response.text else "",
-            raw_response=response,
-            usage={},
-        )
+        logger.info(f"Gemini: Generating content with model={self.model}")
+        start_time = time.perf_counter()
+        try:
+            response = self.client.models.generate_content(
+                model=self.model, contents=prompt
+            )
+            duration = time.perf_counter() - start_time
+            logger.info(f"Gemini: Generation complete | Duration={duration:.4f}s")
+            return AuraResponse(
+                content=str(response.text) if response.text else "",
+                raw_response=response,
+                usage={},
+            )
+        except Exception as e:
+            logger.error(f"Gemini error: {e}", exc_info=True)
+            raise
 
     async def generate_stream(
             self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
     ) -> AsyncGenerator[str, None]:
         """Streams content using Google's GenAI SDK."""
-        response = self.client.models.generate_content_stream(
-            model=self.model, contents=prompt
-        )
-        for chunk in response:
-            if chunk.text:
-                yield chunk.text
-            await asyncio.sleep(0)
+        logger.info(f"Gemini: Starting stream with model={self.model}")
+        try:
+            response = self.client.models.generate_content_stream(
+                model=self.model, contents=prompt
+            )
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+                await asyncio.sleep(0)
+        except Exception as e:
+            logger.error(f"Gemini stream error: {e}", exc_info=True)
+            raise
 
 
 class OpenAIProvider(BaseProvider):
@@ -160,6 +184,12 @@ class OpenAIProvider(BaseProvider):
             usage={},
         )
 
+    async def generate_stream(
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+    ) -> AsyncGenerator[str, None]:
+        """Placeholder for OpenAI streaming."""
+        yield f"OpenAI ({self.model}) streaming not fully implemented yet."
+
 
 class AnthropicProvider(BaseProvider):
     """Anthropic (Claude) API Provider."""
@@ -183,3 +213,9 @@ class AnthropicProvider(BaseProvider):
             raw_response=None,
             usage={},
         )
+
+    async def generate_stream(
+            self, prompt: str, temperature: float = 0.7, max_tokens: int = 500
+    ) -> AsyncGenerator[str, None]:
+        """Placeholder for Anthropic streaming."""
+        yield f"Anthropic ({self.model}) streaming not fully implemented yet."

@@ -1,5 +1,7 @@
 from typing import Literal
+
 from pydantic import BaseModel, Field
+
 
 class AccessibilityRisk(BaseModel):
     """Output of the Accessibility Health Check Agent."""

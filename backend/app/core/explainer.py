@@ -1,8 +1,8 @@
 """Module for providing natural language explanations using a unified provider interface."""
 
+import asyncio
 import json
 import logging
-import asyncio
 from collections.abc import AsyncGenerator
 
 from app.core.factory import get_provider
@@ -70,19 +70,19 @@ class AuraExplainer:
         """Cleans and extracts JSON from LLM response strings."""
         if not content:
             return "{}"
-        
+
         # Remove markdown code blocks if present
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
         elif "```" in content:
             content = content.split("```")[1].split("```")[0]
-            
+
         # Attempt to find the first '{' and last '}'
         start = content.find("{")
         end = content.rfind("}")
         if start != -1 and end != -1:
             content = content[start:end + 1]
-            
+
         return content.strip()
 
     async def explain_page(
@@ -97,9 +97,9 @@ class AuraExplainer:
             response = await self.provider.generate(prompt)
             raw_content = response.content if response.content else "{}"
             content = self._clean_llm_json(raw_content)
-            
+
             logger.debug(f"Raw LLM Response for {distilled_data.url}: {content[:100]}...")
-            
+
             try:
                 explanation = ExplanationResponse.model_validate_json(content)
             except Exception as ve:
@@ -108,7 +108,7 @@ class AuraExplainer:
                     summary="Aura analyzed the page but encountered a formatting issue. The interface appears to be accessible.",
                     actions=[]
                 )
-                
+
             logger.info(f"Successfully generated explanation for {distilled_data.url}")
             return explanation
         except Exception as e:
@@ -125,7 +125,7 @@ class AuraExplainer:
             f"{item.r}: {item.t}"
             for item in distilled_data.summary
         ]
-        
+
         prompt = f"""
         You are Aura, an accessibility companion. 
         Analyze the web page and provide a 2-sentence summary focused on the main purpose.
@@ -151,9 +151,9 @@ class AuraExplainer:
         """Streams the explanation token-by-token using delimiters."""
         logger.info(f"Streaming tokenized explanation for URL: {distilled_data.url}")
         prompt = self._prepare_stream_prompt(distilled_data, user_profile)
-        
+
         current_section = None
-        
+
         try:
             async for chunk in self.provider.generate_stream(prompt):
                 # Check for section headers in the chunk
@@ -169,9 +169,9 @@ class AuraExplainer:
                         yield json.dumps({"type": "action", "content": content})
                 elif current_section:
                     yield json.dumps({"type": current_section, "content": chunk})
-                
+
                 await asyncio.sleep(0) # Yield control
-                
+
             logger.info(f"Finished token streaming for {distilled_data.url}")
         except Exception as e:
             logger.error(f"Error in token stream: {e}")

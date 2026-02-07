@@ -1,7 +1,7 @@
+from .adaptation import AccessibilityVerdict, UIActions
 from .risks import AccessibilityRisk
-from .understanding import PageSummary, AccessibilityConstraints
 from .state import CognitiveState
-from .adaptation import UIActions, AccessibilityVerdict
+from .understanding import AccessibilityConstraints, PageSummary
 
 __all__ = [
     "AccessibilityRisk",

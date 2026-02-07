@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.understanding import AccessibilityConstraints
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.understanding import AccessibilityConstraints
 
 profile_interpreter_agent = Agent(
     get_model(),

@@ -118,7 +118,7 @@ class DOMDistiller:
 
             # Focus distillation only on body to avoid script/head noise
             body = soup.body if soup.body else soup
-            
+
             distilled_summary: list[DistilledElement] = []
             distilled_actions: list[DistilledElement] = []
             seen_texts: set[str] = set()
@@ -139,7 +139,7 @@ class DOMDistiller:
                 # Limit search to the first 200 elements per tag for performance
                 elements = body.find_all(tag, limit=200)
                 logger.debug(f"Found {len(elements)} elements for tag <{tag}>")
-                
+
                 for el in elements:
                     text = el.get_text().strip()
                     if not text and tag == "input":

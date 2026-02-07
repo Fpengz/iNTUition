@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-from typing import Any, List
 
 from app.agent.core.state import AgentState
 from app.agent.tools.base import BaseTool
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 class AuraAgent:
     """The central agent orchestrator for Aura, implementing an OODA-style loop."""
 
-    def __init__(self, tools: List[BaseTool]) -> None:
+    def __init__(self, tools: list[BaseTool]) -> None:
         self.tools = {tool.name: tool for tool in tools}
         self.provider = get_provider()
         self.state = AgentState()
@@ -24,7 +23,7 @@ class AuraAgent:
         tool_descriptions = "\n".join(
             [f"- {tool.name}: {tool.description}" for tool in self.tools.values()]
         )
-        
+
         prompt = f"""
         You are Aura, a proactive AI accessibility assistant.
         Your goal is to help the user navigate and understand the web.
@@ -52,27 +51,27 @@ class AuraAgent:
         """Runs the OODA loop to resolve a user query."""
         logger.info(f"Agent OODA Loop started for: {user_query}")
         self.state.add_message("user", user_query)
-        
-        for i in range(self.max_iterations):
-            prompt = self._prepare_prompt(user_query)
-            response = await self.provider.generate(prompt)
-            content = response.content
-            
-            if "Final Answer:" in content:
-                final_answer = content.split("Final Answer:")[1].strip()
-                self.state.add_message("assistant", final_answer)
-                return final_answer
 
-            # Parse Action and Action Input
+        for i in range(self.max_iterations):
             try:
+                prompt = self._prepare_prompt(user_query)
+                response = await self.provider.generate(prompt)
+                content = response.content
+
+                if "Final Answer:" in content:
+                    final_answer = content.split("Final Answer:")[1].strip()
+                    self.state.add_message("assistant", final_answer)
+                    return final_answer
+
+                # Parse Action and Action Input
                 action_match = re.search(r"Action: (.*)", content)
                 input_match = re.search(r"Action Input: (.*)", content)
-                
+
                 if action_match and input_match:
                     tool_name = action_match.group(1).strip()
                     tool_input_str = input_match.group(1).strip()
                     tool_input = json.loads(tool_input_str)
-                    
+
                     if tool_name in self.tools:
                         logger.info(f"Executing Tool: {tool_name} with {tool_input}")
                         observation = await self.tools[tool_name].run(**tool_input)

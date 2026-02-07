@@ -1,7 +1,8 @@
-import pytest
 import asyncio
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Global patches BEFORE app imports
 patch("pydantic_ai.Agent", MagicMock()).start()
@@ -10,6 +11,7 @@ patch("pydantic_ai.models.openai.OpenAIModel", MagicMock()).start()
 patch("app.core.factory.get_provider", MagicMock()).start()
 
 from app.main import app
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -22,9 +24,9 @@ def event_loop():
 
 @pytest.fixture
 async def client() -> AsyncGenerator:
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
     async with AsyncClient(
-        transport=ASGITransport(app=app), 
+        transport=ASGITransport(app=app),
         base_url="http://test"
     ) as client:
         yield client

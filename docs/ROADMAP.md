@@ -9,8 +9,8 @@ This roadmap outlines the path for evolving Aura into a world-class AI accessibi
 - [x] **Modern Schema:** Python 3.12+ type-safe Pydantic models for predictable data flow.
 - [x] **Speculative Execution:** Link-hover prefetching to hide LLM latency.
 - [x] **Persistent UI:** Migration to Chrome Side Panel for a non-disruptive user experience.
-- [ ] **TDD Baseline:** Achieve >80% coverage on core distillation and explanation logic.
-- [ ] **Logging & Observability:** Implement structured JSON logging and latency tracing (X-Process-Time).
+- [x] **TDD Baseline:** Achieve >80% coverage on core distillation and explanation logic.
+- [x] **Logging & Observability:** Implement structured JSON logging and latency tracing (X-Process-Time).
 
 ## 🟡 Phase 2: Multimodal Perception & Interaction (Completed)
 *Objective: Move beyond text to see, hear, and speak with the user.*
@@ -58,9 +58,9 @@ This roadmap outlines the path for evolving Aura into a world-class AI accessibi
     - Implement a safe registry of accessibility tools (e.g., `IncreaseFontSize`, `EnableDarkMode`, `SimplifyLayout`).
     - Enable the LLM to call tools with structured parameters instead of executing raw code.
     - Build a "Tool Router" in the extension runtime to execute agent commands safely.
-- [ ] **Vision Judge Agent (Closed-Loop AI):**
+- [x] **Vision Judge Agent (Closed-Loop AI):**
     - Implement a self-correcting feedback loop: Detect -> Change -> Observe (Screenshot) -> Evaluate.
-    - Use a multimodal model (e.g., LLaVA, GPT-4o-Vision) to verify accessibility improvements visually.
+    - Use Gemini 1.5 Pro to verify accessibility improvements visually.
     - Enable automatic rollback if the "Judge" detects broken UI or reduced usability.
 - [ ] **Visual Diffing:**
     - Capture "Before" and "After" snapshots to allow the agent to reason about the impact of its changes.

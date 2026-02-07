@@ -1,9 +1,8 @@
 """Pydantic schemas for data exchange within the Aura backend."""
 
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal
 
-from pydantic import BaseModel, HttpUrl, Field
-
+from pydantic import BaseModel, Field, HttpUrl
 
 # --- DOM Scraping & Distillation ---
 
@@ -63,13 +62,13 @@ class MotorProfile(BaseModel):
 
 class SensoryProfile(BaseModel):
     vision_acuity: Literal["normal", "low", "blind"] = "normal"
-    color_blindness: Optional[str] = None
+    color_blindness: str | None = None
     audio_sensitivity: bool = False
     high_contrast: bool = False
 
 class ModalityPreferences(BaseModel):
-    input_preferred: List[Literal["text", "speech", "vision"]] = ["text"]
-    output_preferred: List[Literal["visual", "auditory", "haptic"]] = ["visual"]
+    input_preferred: list[Literal["text", "speech", "vision"]] = ["text"]
+    output_preferred: list[Literal["visual", "auditory", "haptic"]] = ["visual"]
     auto_tts: bool = False
 
 class UserProfile(BaseModel):
@@ -80,12 +79,12 @@ class UserProfile(BaseModel):
     motor: MotorProfile = Field(default_factory=MotorProfile)
     sensory: SensoryProfile = Field(default_factory=SensoryProfile)
     modalities: ModalityPreferences = Field(default_factory=ModalityPreferences)
-    
+
     # Simple compatibility layer for existing code
     @property
     def cognitive_needs(self) -> bool:
         return self.cognitive.support_level != "none"
-    
+
     @property
     def language_level(self) -> str:
         return "simple" if self.cognitive.simplify_language else "detailed"

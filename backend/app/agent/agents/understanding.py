@@ -1,6 +1,7 @@
 from pydantic_ai import Agent
-from app.agent.models.understanding import PageSummary
+
 from app.agent.core.dependencies import get_model
+from app.agent.models.understanding import PageSummary
 
 page_understanding_agent = Agent(
     get_model(),

@@ -1,11 +1,12 @@
 from pydantic_ai import Agent
+
+from app.agent.core.dependencies import get_vision_model
 from app.agent.models.skeleton import VisionVerdict
-from app.agent.core.dependencies import get_model
 
 # Phase 5: Vision Judge Agent (Closed-Loop)
 # This agent expects multimodal input (text + screenshots)
 vision_judge_agent = Agent(
-    get_model(), # Should be a vision-capable model like gemini-2.0-flash
+    get_vision_model(),
     output_type=VisionVerdict,
     retries=2,
     instructions=(
