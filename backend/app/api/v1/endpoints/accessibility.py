@@ -19,6 +19,7 @@ from app.agent.tools.explainer_tool import ExplainerTool
 from app.agent.tools.tts_tool import TTSTool
 from app.core.cache import explanation_cache
 from app.core.distiller import DOMDistiller
+from app.core.errors import format_friendly_error
 from app.core.explainer import AuraExplainer
 from app.core.tts import AuraTTS
 from app.schemas import (
@@ -113,7 +114,7 @@ async def process_runtime(request: Request):
         return result
     except Exception as e:
         logger.exception(f"Error in /process: {e}")
-        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+        return Response(content=json.dumps({"error": format_friendly_error(e)}), status_code=500, media_type="application/json")
 
 @router.post("/chat")
 async def chat(request: Request):
@@ -126,7 +127,7 @@ async def chat(request: Request):
         return {"response": response}
     except Exception as e:
         logger.exception(f"Error in /chat: {e}")
-        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+        return Response(content=json.dumps({"error": format_friendly_error(e)}), status_code=500, media_type="application/json")
 
 @router.post("/explain")
 async def explain(request: Request, profile: UserProfile | None = None):
@@ -160,7 +161,7 @@ async def explain(request: Request, profile: UserProfile | None = None):
         }
     except Exception as e:
         logger.exception(f"Error in /explain: {e}")
-        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+        return Response(content=json.dumps({"error": format_friendly_error(e)}), status_code=500, media_type="application/json")
 
 @router.post("/explain/stream")
 async def explain_stream(request: Request, profile: UserProfile | None = None):
@@ -206,12 +207,12 @@ async def explain_stream(request: Request, profile: UserProfile | None = None):
                 # Cache final result (simplified)
                 # ...
             except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'content': format_friendly_error(e)})}\n\n"
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
     except Exception as e:
         logger.exception(f"Error in /explain/stream: {e}")
-        return Response(content=json.dumps({"error": str(e)}), status_code=500, media_type="application/json")
+        return Response(content=json.dumps({"error": format_friendly_error(e)}), status_code=500, media_type="application/json")
 
 @router.post("/action", response_model=ActionResponse)
 async def action(request_body: ActionRequest):
@@ -228,7 +229,7 @@ async def text_to_speech(request_body: TTSRequest):
         return Response(content=audio_bytes, media_type="audio/mpeg")
     except Exception as e:
         logger.error(f"TTS error: {e}", exc_info=True)
-        return Response(content=json.dumps({"error": f"TTS Error: {e}"}), status_code=500, media_type="application/json")
+        return Response(content=json.dumps({"error": format_friendly_error(e)}), status_code=500, media_type="application/json")
 
 @router.post("/verify")
 async def verify_adaptation(request_body: VerificationRequest):
@@ -263,5 +264,5 @@ async def verify_adaptation(request_body: VerificationRequest):
         return {
             "success": False, 
             "recommendation": "keep", 
-            "explanation": f"Verification failed: {str(e)}"
+            "explanation": f"Verification failed: {format_friendly_error(e)}"
         }

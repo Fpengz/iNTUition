@@ -4,10 +4,12 @@ console.log("Aura background service worker loaded.");
 
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html'; // Relative path to your offscreen HTML
 
-// Configure the side panel to open when the action icon is clicked
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error) => console.error("Failed to set panel behavior:", error));
+// Listen for extension icon click to toggle Aura UI
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "TOGGLE_AURA" });
+  }
+});
 
 async function setupOffscreenDocument(reason: chrome.offscreen.Reason) {
   // Check all active contexts and if an offscreen document is already open, don't create a new one.

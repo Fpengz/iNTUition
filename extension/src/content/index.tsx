@@ -8,12 +8,11 @@ import type { AuraTheme } from './ThemeManager';
 import { textVide } from "text-vide";
 
 /**
- * Aura Content Script
- * Responsibility: Scrape the page for accessible elements and handle highlights.
+ * Aura Content Script - Redesigned for iNTUition 2026
+ * Primary interface is now a floating agentic bubble.
  */
 
 export const scrapePage = () => {
-  // ... (keep existing implementation)
   const elements = document.querySelectorAll('button, a, input, h1, h2, h3, [role="button"], [role="link"], [role="menuitem"]');
   const vh = window.innerHeight;
   const vw = window.innerWidth;
@@ -23,9 +22,7 @@ export const scrapePage = () => {
 
   const distilledElements = Array.from(elements)
     .filter(el => {
-      // EXCLUDE AURA'S OWN UI
       if (el.closest('#aura-extension-mount') || el.closest('#aura-extension-root')) return false;
-
       const style = window.getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
       const rect = el.getBoundingClientRect();
@@ -123,13 +120,9 @@ const applyAdaptations = (adaptations: any) => {
     } else if (layout_mode === "focus") {
         document.body.classList.add("aura-focus-mode");
         document.querySelectorAll("body > *:not(script):not(style)").forEach(el => {
-            // NEVER dim Aura itself
             if (el.id === 'aura-extension-mount' || el.id === 'aura-extension-root') return;
-
             const hasHighlight = el.querySelector(".aura-highlight-active") || el.classList.contains("aura-highlight-active");
-            if (!hasHighlight) {
-                el.classList.add("aura-dimmed");
-            }
+            if (!hasHighlight) el.classList.add("aura-dimmed");
         });
     }
 };
@@ -139,6 +132,8 @@ const applyAdaptations = (adaptations: any) => {
 const style = document.createElement('style');
 style.id = 'aura-adaptation-styles';
 style.textContent = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
   .aura-highlight-active {
     outline: 5px solid #6366f1 !important;
     outline-offset: 4px !important;
@@ -161,19 +156,9 @@ style.textContent = `
   .aura-simplified-mode [data-aura-hidden="true"] {
     display: none !important;
   }
-  .aura-annotation-tooltip {
-      position: absolute;
-      background: #1e293b;
-      color: white;
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      z-index: 10002;
-      pointer-events: none;
-      max-width: 200px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      margin-top: 8px;
-  }
+  
+  /* Bionic Reading Styles */
+  b { font-weight: 700 !important; color: inherit !important; }
 `;
 document.head.appendChild(style);
 
@@ -195,7 +180,7 @@ window.addEventListener('message', (event) => {
     }
 });
 
-// --- Message Listener (from Background/Popup) ---
+// --- Message Listener (from Background) ---
 
 chrome.runtime.onMessage.addListener(
   (
@@ -203,7 +188,15 @@ chrome.runtime.onMessage.addListener(
     _sender: chrome.runtime.MessageSender,
     sendResponse: (response: any) => void
   ) => {
-    if (request.action === "GET_DOM") {
+    if (request.action === "TOGGLE_AURA") {
+        const root = document.getElementById('aura-extension-mount');
+        if (root) {
+            root.style.display = root.style.display === 'none' ? 'block' : 'none';
+        } else {
+            initFloatingUI();
+        }
+        sendResponse({ success: true });
+    } else if (request.action === "GET_DOM") {
       try {
         const data = scrapePage();
         sendResponse(data);
@@ -237,25 +230,16 @@ chrome.runtime.onMessage.addListener(
 // --- UI Injection ---
 
 const FloatingContainer = () => {
-    const [showSettings, setShowSettings] = React.useState(false);
-    
-    const baseStyles = `
-        :host { --aura-primary: #6366f1; }
-        .aura-container { font-family: system-ui, sans-serif; }
-        .btn-primary { background: #6366f1; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; }
-        .btn-secondary { background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
-        @keyframes auraPulse {
-            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-        }
+    const shadowStyles = `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        :host { font-family: 'Inter', system-ui, sans-serif; }
     `;
 
     return (
         <React.StrictMode>
-            <ShadowRoot css={[baseStyles]}>
-                <FloatingWindow title="Aura AI" setShowSettings={setShowSettings}>
-                    <FloatingApp externalShowSettings={showSettings} onSettingsOpen={() => setShowSettings(false)} />
+            <ShadowRoot css={[shadowStyles]}>
+                <FloatingWindow title="Aura Assistant">
+                    <FloatingApp />
                 </FloatingWindow>
             </ShadowRoot>
         </React.StrictMode>
@@ -263,98 +247,25 @@ const FloatingContainer = () => {
 };
 
 const initFloatingUI = () => {
-    // Check if already injected
-    if (document.getElementById('aura-extension-root')) return;
-
+    if (document.getElementById('aura-extension-mount')) {
+        const existing = document.getElementById('aura-extension-mount');
+        if (existing) existing.style.display = 'block';
+        return;
+    }
     const container = document.createElement('div');
     container.id = 'aura-extension-mount';
+    container.style.display = 'block';
+    container.style.position = 'fixed';
+    container.style.zIndex = '2147483647';
     document.body.appendChild(container);
-
     const root = createRoot(container);
     root.render(<FloatingContainer />);
 };
 
-// Wait for body to be available
 if (document.body) {
     initFloatingUI();
 } else {
     document.addEventListener('DOMContentLoaded', initFloatingUI);
 }
 
-const initializePrefetchListeners = () => {
-  let hoverTimer: number | undefined;
-  const PREFETCH_DELAY = 750;
-
-  document.addEventListener('mouseover', (event) => {
-    const target = event.target as HTMLElement;
-    const link = target.closest('a');
-    if (link && link.href && link.href.startsWith('http')) {
-      hoverTimer = window.setTimeout(() => {
-        chrome.runtime.sendMessage({ type: "PREFETCH_URL", url: link.href }).catch(() => {});
-      }, PREFETCH_DELAY);
-    }
-  });
-
-  document.addEventListener('mouseout', () => {
-    clearTimeout(hoverTimer);
-  });
-};
-
-initializePrefetchListeners();
-
-const initializeStruggleDetection = () => {
-    let clickCount = 0;
-    let clickTimer: number | undefined;
-    let lastScrollPos = window.scrollY;
-    let scrollDirectionChanges = 0;
-    let lastDirection = 0; // 1 for down, -1 for up
-
-    // Rage Click Detection (e.g., 5 clicks in 2 seconds)
-    document.addEventListener('click', (event) => {
-        const target = event.target as HTMLElement;
-        const isInteractive = target.closest('button, a, input, [role="button"]');
-        
-        if (!isInteractive) {
-            clickCount++;
-            if (!clickTimer) {
-                clickTimer = window.setTimeout(() => {
-                    if (clickCount >= 5) {
-                        console.log("Aura: Rage clicks detected!");
-                        chrome.runtime.sendMessage({ type: "STRUGGLE_DETECTED" }).catch(() => {});
-                    }
-                    clickCount = 0;
-                    clickTimer = undefined;
-                }, 2000);
-            }
-        }
-    });
-
-    // Rapid Scrolling / Looping Detection
-    window.addEventListener('scroll', () => {
-        const currentScroll = window.scrollY;
-        const direction = currentScroll > lastScrollPos ? 1 : -1;
-
-        if (direction !== lastDirection && Math.abs(currentScroll - lastScrollPos) > 50) {
-            scrollDirectionChanges++;
-            lastDirection = direction;
-
-            // If user changes direction 6 times quickly (3 full loops)
-            if (scrollDirectionChanges >= 6) {
-                console.log("Aura: Scroll looping detected!");
-                chrome.runtime.sendMessage({ type: "STRUGGLE_DETECTED" }).catch(() => {});
-                scrollDirectionChanges = 0;
-            }
-        }
-        lastScrollPos = currentScroll;
-
-        // Reset scroll changes after some time of inactivity
-        window.clearTimeout((window as any).auraScrollTimer);
-        (window as any).auraScrollTimer = window.setTimeout(() => {
-            scrollDirectionChanges = 0;
-        }, 3000);
-    });
-};
-
-initializeStruggleDetection();
-
-console.log("Aura Content Script (Floating UI) Active.");
+console.log("Aura Redesigned UI Active.");

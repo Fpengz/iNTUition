@@ -3,11 +3,9 @@
   "name": "Aura: Accessibility Companion",
   "version": "1.0",
   "description": "An AI-powered bridge for interface accessibility.",
-  "permissions": ["activeTab", "scripting", "storage", "audioCapture", "videoCapture", "offscreen", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "storage", "audioCapture", "videoCapture", "offscreen"],
   "action": {
-  },
-  "side_panel": {
-    "default_path": "index.html"
+    "default_title": "Aura AI"
   },
   "background": {
     "service_worker": "src/background.js",

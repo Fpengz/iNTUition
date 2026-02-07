@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Settings, ArrowLeft, Sparkles, Brain, MousePointer2, Eye, User, Info } from 'lucide-react';
 import AuraCardDisplay from '../components/AuraCardDisplay';
 
 interface CardData {
@@ -53,6 +55,14 @@ const DEFAULT_PROFILE: UserProfile = {
 
 const API_BASE_URL = (import.meta.env.VITE_AURA_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
+const formatErrorMessage = (err: any) => {
+    const message = err.message || String(err);
+    if (message.includes('Failed to fetch') || message.includes('Connection refused') || message.includes('Errno 61')) {
+        return "Aura Brain is offline. Please ensure the backend server is running.";
+    }
+    return message;
+};
+
 interface FloatingAppProps {
   externalShowSettings?: boolean;
   onSettingsOpen?: () => void;
@@ -66,7 +76,6 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
-  const [showFeedback, setShowFeedback] = useState(false);
 
   // Sync external showSettings
   useEffect(() => {
@@ -100,7 +109,6 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
       
       setUserProfile(newProfile);
 
-      // Apply theme change immediately
       if (category === 'theme') {
           window.postMessage({ type: 'AURA_SET_THEME', theme: updates }, '*');
       }
@@ -121,6 +129,7 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
   };
 
   const handleStreamExplain = useCallback(async (scrapedData: any) => {
+    setIsStreaming(true);
     setCardData({ summary: '', actions: [] });
     
     try {
@@ -141,10 +150,8 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
-        // Parse SSE format: "data: {...}\n\n"
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last incomplete line in buffer
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -159,13 +166,8 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
                 }));
               } else if (chunk.type === 'action') {
                 setCardData(prev => {
-                    // Actions usually come as full sentences in chunks or tokens
-                    // For a cleaner UI, we handle action list accumulation
                     if (prev.actions.length === 0) return { ...prev, actions: [chunk.content] };
-                    
                     const newActions = [...prev.actions];
-                    // If the chunk is a fragment of the last action, append it
-                    // In our current delimiter logic, headers handle this, but let's be robust
                     if (chunk.content.startsWith(', ') || chunk.content.startsWith(' ')) {
                         newActions[newActions.length - 1] += chunk.content;
                     } else {
@@ -183,7 +185,7 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
         }
       }
     } catch (err: any) {
-      setError(`Streaming failed: ${err.message}`);
+      setError(`Streaming failed: ${formatErrorMessage(err)}`);
     } finally {
       setIsStreaming(false);
     }
@@ -214,10 +216,8 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
 
       const scrapedData: any = await getDomPromise;
 
-      // Start streaming explanation immediately for progressive UX
       handleStreamExplain(scrapedData);
 
-      // Meanwhile, trigger the full agentic process for structural adaptations
       const payload = { 
           dom_data: scrapedData, 
           profile: userProfile,
@@ -252,38 +252,11 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
                   theme: ui_command.theme
               }
           }, '*');
-
-          if (ui_command.visual_validation_required) {
-              setTimeout(async () => {
-                  try {
-                      const response = await chrome.runtime.sendMessage({ type: 'CAPTURE_SCREENSHOT' });
-                      if (response?.dataUrl) {
-                          const verifyRes = await fetch(`${API_BASE_URL}/verify`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                  screenshot: response.dataUrl,
-                                  goal: ui_command.explanation,
-                                  actions_applied: ui_command.highlight,
-                                  url: window.location.href
-                              })
-                          });
-                          const verdict = await verifyRes.json();
-                          if (verdict.recommendation === 'rollback') {
-                              window.postMessage({ type: 'AURA_ADAPT_UI', adaptations: { reset: true } }, '*');
-                              setError("Aura detected a layout issue and reverted for safety.");
-                          }
-                      }
-                  } catch (vErr) {
-                      console.error("Vision Loop Error:", vErr);
-                  }
-              }, 1000);
-          }
       }
 
       setLoading(false);
     } catch (err: any) {
-      setError(err.message || "An error occurred.");
+      setError(formatErrorMessage(err));
       setLoading(false);
     }
   }, [userProfile, handleStreamExplain]);
@@ -305,96 +278,104 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
   };
 
   const handleActionClick = async (action: string) => {
-    // Similar to handleExplain, get DOM first then call action endpoint
-    // Implementation omitted for brevity but follows same pattern
     console.log("Action clicked:", action);
   };
 
-  const handleFeedback = (helpful: boolean) => {
-      // Implementation similar to App.tsx
-      console.log("Feedback:", helpful);
-      setShowFeedback(false);
-  };
+  const SectionHeader = ({ icon: Icon, title, color }: any) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', marginTop: '12px' }}>
+        <div style={{ padding: '8px', background: `${color}15`, borderRadius: '10px', color }}>
+            <Icon size={18} />
+        </div>
+        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#334155' }}>{title}</h4>
+    </div>
+  );
+
+  const SettingToggle = ({ label, checked, onChange }: any) => (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#475569' }}>{label}</span>
+          <button 
+            onClick={() => onChange(!checked)}
+            style={{ 
+                width: '42px', 
+                height: '24px', 
+                background: checked ? '#6366f1' : '#e2e8f0',
+                borderRadius: '12px',
+                position: 'relative',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+            }}
+          >
+              <motion.div 
+                animate={{ x: checked ? 20 : 2 }}
+                style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px' }}
+              />
+          </button>
+      </div>
+  );
 
   return (
-    <div className="aura-container" style={{ height: 'auto', padding: '0.75rem', background: 'transparent' }}>
-      <header className="aura-header" style={{ marginBottom: '0.75rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#6366f1' }}>Aura Assistant</h2>
-        <button 
-            className="btn-secondary"
-            onClick={() => setShowSettings(!showSettings)}
-            style={{ padding: '3px 6px', fontSize: '0.7rem' }}
-        >
-            {showSettings ? 'Back' : 'Settings'}
-        </button>
-      </header>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <AnimatePresence mode="wait">
+        {!showSettings ? (
+          <motion.div
+            key="main"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1e293b' }}>Hello!</h2>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Aura is ready to assist.</p>
+                </div>
+                <button 
+                    onClick={() => setShowSettings(true)}
+                    style={{ background: '#f1f5f9', border: 'none', borderRadius: '12px', padding: '10px', cursor: 'pointer', color: '#64748b' }}
+                >
+                    <Settings size={20} />
+                </button>
+            </div>
 
-      {showSettings ? (
-          <div className="settings-panel" style={{ padding: '0.4rem', fontSize: '0.8rem' }}>
-              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
-                  <label>Appearance:</label>
-                  <select 
-                    value={userProfile.theme}
-                    onChange={(e) => handleProfileChange('theme', e.target.value)}
-                    style={{ fontSize: '0.75rem', padding: '2px' }}
-                  >
-                      <option value="none">Default</option>
-                      <option value="dark">Dark Mode</option>
-                      <option value="contrast">High Contrast</option>
-                  </select>
-              </div>
-              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
-                  <label>Support Level:</label>
-                  <select 
-                    value={userProfile.cognitive.support_level}
-                    onChange={(e) => handleProfileChange('cognitive', { support_level: e.target.value })}
-                    style={{ fontSize: '0.75rem', padding: '2px' }}
-                  >
-                      <option value="none">None</option>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                  </select>
-              </div>
-              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
-                <label>
-                    <input 
-                        type="checkbox" 
-                        checked={userProfile.cognitive.simplify_language}
-                        onChange={(e) => handleProfileChange('cognitive', { simplify_language: e.target.checked })}
-                    /> Simplify Language
-                </label>
-              </div>
-              <div className="setting-item" style={{ marginBottom: '0.5rem' }}>
-                <label>
-                    <input 
-                        type="checkbox" 
-                        checked={userProfile.modalities.auto_tts}
-                        onChange={(e) => handleProfileChange('modalities', { auto_tts: e.target.checked })}
-                    /> Auto-TTS
-                </label>
-              </div>
-          </div>
-      ) : (
-        <>
-            <button 
-                className="btn-primary"
+            <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleExplain()} 
                 disabled={loading}
                 style={{ 
-                    padding: '8px', 
-                    fontSize: '0.9rem',
-                    borderRadius: '8px',
-                    animation: loading ? 'auraPulse 2s infinite' : 'none'
+                    padding: '16px', 
+                    fontSize: '16px',
+                    fontWeight: 800,
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 10px 20px -5px rgba(99, 102, 241, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px'
                 }}
             >
-                {loading ? 'Analyzing...' : 'Explain Page'}
-            </button>
+                {loading ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                        <Sparkles size={20} />
+                    </motion.div>
+                ) : <Sparkles size={20} />}
+                {loading ? 'Thinking...' : 'Analyze Page'}
+            </motion.button>
 
-            {error && <div className="error-message" style={{ fontSize: '0.7rem', padding: '6px', marginTop: '0.5rem' }}>{error}</div>}
+            {error && (
+                <div style={{ marginTop: '16px', padding: '12px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '12px', color: '#b91c1c', fontSize: '13px', display: 'flex', gap: '8px' }}>
+                    <Info size={16} />
+                    {error}
+                </div>
+            )}
             
-            {(cardData.summary || isStreaming) && (
-                <div style={{ marginTop: '0.75rem' }}>
+            <div style={{ flex: 1, overflowY: 'auto', marginTop: '20px', marginLeft: '-20px', marginRight: '-20px' }}>
+                {(cardData.summary || isStreaming) && (
                     <AuraCardDisplay 
                         summary={cardData.summary}
                         actions={cardData.actions}
@@ -403,18 +384,79 @@ const FloatingApp: React.FC<FloatingAppProps> = ({ externalShowSettings, onSetti
                         onTTSClick={handleTTS}
                         onActionClick={handleActionClick}
                     />
+                )}
+                
+                {!cardData.summary && !loading && !error && (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+                        <Brain size={40} style={{ marginBottom: '12px', opacity: 0.2 }} />
+                        <p style={{ fontSize: '14px', fontWeight: 500 }}>Click above to simplify this interface or get an overview.</p>
+                    </div>
+                )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="settings"
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            style={{ padding: '20px', flex: 1, overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                <button 
+                    onClick={() => setShowSettings(false)}
+                    style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: '#64748b' }}
+                >
+                    <ArrowLeft size={20} />
+                </button>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#1e293b' }}>Preferences</h2>
+            </div>
 
-                    {showFeedback && (
-                        <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.8rem' }}>
-                            <p>Helpful?</p>
-                            <button className="btn-secondary" onClick={() => handleFeedback(true)}>Yes</button>
-                            <button className="btn-secondary" onClick={() => handleFeedback(false)} style={{ marginLeft: '4px' }}>No</button>
-                        </div>
-                    )}
-                </div>
-            )}
-        </>
-      )}
+            <SectionHeader icon={Brain} title="Cognitive Support" color="#6366f1" />
+            <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '4px 16px', marginBottom: '24px' }}>
+                <SettingToggle 
+                    label="Simplify Language" 
+                    checked={userProfile.cognitive.simplify_language}
+                    onChange={(val: boolean) => handleProfileChange('cognitive', { simplify_language: val })}
+                />
+                <SettingToggle 
+                    label="Reduce Distractions" 
+                    checked={userProfile.cognitive.reduce_distractions}
+                    onChange={(val: boolean) => handleProfileChange('cognitive', { reduce_distractions: val })}
+                />
+            </div>
+
+            <SectionHeader icon={MousePointer2} title="Motor & Interaction" color="#a855f7" />
+            <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '4px 16px', marginBottom: '24px' }}>
+                <SettingToggle 
+                    label="Upscale Targets" 
+                    checked={userProfile.motor.target_upscaling}
+                    onChange={(val: boolean) => handleProfileChange('motor', { target_upscaling: val })}
+                />
+                <SettingToggle 
+                    label="Click Assistance" 
+                    checked={userProfile.motor.click_assistance}
+                    onChange={(val: boolean) => handleProfileChange('motor', { click_assistance: val })}
+                />
+            </div>
+
+            <SectionHeader icon={Eye} title="Vision & Sensory" color="#f59e0b" />
+            <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '4px 16px', marginBottom: '24px' }}>
+                <SettingToggle 
+                    label="High Contrast" 
+                    checked={userProfile.sensory.high_contrast}
+                    onChange={(val: boolean) => handleProfileChange('sensory', { high_contrast: val })}
+                />
+            </div>
+
+            <SectionHeader icon={User} title="Identity" color="#64748b" />
+            <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '16px', marginBottom: '24px' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Aura ID</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: 700, color: '#475569' }}>{userProfile.aura_id}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

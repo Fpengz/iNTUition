@@ -6,6 +6,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from app.core.factory import get_provider
+from app.core.errors import format_friendly_error
 from app.schemas import (
     ActionResponse,
     DistilledData,
@@ -175,7 +176,8 @@ class AuraExplainer:
             logger.info(f"Finished token streaming for {distilled_data.url}")
         except Exception as e:
             logger.error(f"Error in token stream: {e}")
-            yield json.dumps({"type": "error", "content": str(e)})
+            friendly_msg = format_friendly_error(e)
+            yield json.dumps({"type": "error", "content": friendly_msg})
 
     async def find_action(
         self, distilled_data: DistilledData, query: str

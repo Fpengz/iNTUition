@@ -80,6 +80,7 @@ Aura has evolved from a reactive explainer to a proactive agent:
         - `extension/src/*`: Achieved >90% test coverage across all core extension modules (`App`, `background`, `content`, `services`).
         - `backend/app/core/logging.py`: Implemented centralized structured logging system.
         - `backend/app/main.py`: Added request/response logging middleware and configuration dump on startup.
+        - `extension/src/{App,FloatingApp}.tsx`: Integrated Chrome's built-in AI (Gemini Nano) for instant on-device local summarization.
     </artifact_trail>
 
     <file_system_state>
@@ -94,7 +95,9 @@ Aura has evolved from a reactive explainer to a proactive agent:
         - Implemented real multimodal Vision Judge using Gemini 1.5 Pro.
         - Integrated centralized structured logging across all backend modules and endpoints.
         - Enhanced reliability with content-aware Intelligent Mock Fallback for LLM connection failures.
+        - Integrated Chrome's Gemini Nano for instant, low-latency local summaries in the extension.
         - Validated all backend tests pass via `uv run pytest`.
+        - Achieved >90% coverage for frontend/extension codebase.
     </recent_actions>
 
     <task_state>
@@ -105,6 +108,7 @@ Aura has evolved from a reactive explainer to a proactive agent:
         5. [DONE] Increase Extension test coverage to >90%.
         6. [DONE] Replace simulated Vision Judge multimodal check with real Gemini 1.5 Pro image analysis.
         7. [DONE] Implement comprehensive structured logging and diagnostic tools.
-        8. [IN PROGRESS] Finalize performance benchmarking and demo recording.
+        8. [DONE] Integrate Chrome Gemini Nano for low-latency local summarization.
+        9. [IN PROGRESS] Finalize performance benchmarking and demo recording.
     </task_state>
 </state_snapshot>
